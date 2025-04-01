@@ -386,7 +386,7 @@ function nwkViewer()
 
     function loadButtonCb(~, ~)
 
-         [file, path] = uigetfile('*.fMx;*.coll;*.stl;*.msh;*.nwk', 'Select a file to load');
+         [file, path] = uigetfile('*.fMx;*.coll;*.stl;*.msh;*.nwk;*.nwkx', 'Select a file to load');
          if isequal(file, 0) || isequal(path, 0)
               disp('File selection canceled');
               return
@@ -464,6 +464,8 @@ function nwkViewer()
 
     function loadScene(filePath, view, collColor)
         [path, name, ext] = fileparts(filePath);
+
+        if strcmp(ext, '.nwkx'); ext = '.fMx'; end
 
          if strcmp(ext, '.fMx')
              activeNwk = nwkHelp.load(fullfile(path, name));
@@ -1932,10 +1934,24 @@ function nwkViewer()
                     indices = 1:(value-1);
                 end
 
-            elseif any(startsWith(condition, {'d', 'l', 'g', 'p1', 'p2'}))
+            elseif any(startsWith(condition, {'d', 'l', 'g', 'p1', 'p2', 'ls'}))
 
                  if strcmp(condition(1), 'd')
                     searchCol = activeNwk.dia;
+
+                elseif strcmp(condition(1:2), 'ls')
+                     KFfile = 'KF_WM_TV_straight_LCC.faceDistance';
+    
+                     if isfield(activeNwk, 'faceDistance')
+                         searchCol = activeNwk.faceDistance;
+                     elseif ~isfield(activeNwk, 'faceDistance') && exist(KFfile, 'file') == 2
+                         activeNwk.faceDistance = load(KFfile);
+                         searchCol = activeNwk.faceDistance;
+                     else
+                         disp('KF_WM_TV_straight_LCC.faceDistance file not found');
+                         return;
+                     end
+
                  elseif strcmp(condition(1), 'l')
                     if ~isfield(activeNwk, 'faceLen')
                         activeNwk.faceLen = calculateLengths();
