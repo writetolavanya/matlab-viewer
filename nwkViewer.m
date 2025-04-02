@@ -10,7 +10,6 @@ function nwkViewer()
        'Position', [400 30 900 780], 'Color', [1 1 1], 'NumberTitle', 'off');
    ax = axes(axesFig, 'Units','normalized',...
        "Position", [0 0 1 1]);
-
    axis 'off';
 
    % Set the CloseRequestFcn of both windows to close both figures
@@ -112,6 +111,9 @@ function nwkViewer()
    faceSelect = uicheckbox(viewTab, "Text", "faceSelect",...
        "Position",[140 610 80 22], "ValueChangedFcn", @faceSelectCb);
 
+   togglePtCloudView = uicheckbox(viewTab, "Text", "togglePtCloudView", ...
+       "Position", [140 590 130 22], "ValueChangedFcn", @togglePtCloudCb);
+
    % %Create transparency textbox in View tab
    % transparencyLabel = uilabel(viewTab, 'Text', 'Transparency',...
    %     'Position', [80, 575, 80, 22]);
@@ -123,11 +125,11 @@ function nwkViewer()
 
    %Create a button group for Endpoints and Endfaces in View tab
    endpointsGrp = uibuttongroup(viewTab, "Title", "Show EndPoints",...
-       "TitlePosition","lefttop", "Position", [20, 528, 260, 80],...
+       "TitlePosition","lefttop", "Position", [20, 508, 260, 80],...
        "BackgroundColor",[0.8 0.8 0.8], "SelectionChangedFcn", @updateEndPoints);
 
    endfacesGrp = uibuttongroup(viewTab, "Title", "Show EndFaces",...
-       "TitlePosition","lefttop", "Position", [20, 443, 260, 80],...
+       "TitlePosition","lefttop", "Position", [20, 423, 260, 80],...
        "BackgroundColor",[0.8 0.8 0.8], "SelectionChangedFcn", @updateEndFaces);
 
    %Create radio buttons in Endpoints and Endfaces in Buttongroup
@@ -142,10 +144,10 @@ function nwkViewer()
    facesRb4 = uiradiobutton(endfacesGrp, 'Text', 'OutletFaces', 'Position', [130 5 100 20]);
 
    %Create panel for selection and edits in View tab
-   editGrp = uipanel(viewTab, "Position", [20, 268, 260, 170], "BackgroundColor",[0.8 0.8 0.8]);
+   editGrp = uipanel(viewTab, "Position", [20, 248, 260, 170], "BackgroundColor",[0.8 0.8 0.8]);
 
    selectionGrp = uibuttongroup(viewTab, "Title", "Selection",...
-       "TitlePosition","lefttop", "Position", [28, 383, 240, 50],...
+       "TitlePosition","lefttop", "Position", [28, 363, 240, 50],...
        "BackgroundColor",[0.8 0.8 0.8], "SelectionChangedFcn", @updateSelections);
 
    %Create radio buttons in selection Group Buttongroup
@@ -154,21 +156,21 @@ function nwkViewer()
    selectionRb3 = uiradiobutton(selectionGrp, 'Text', '~Selections', 'Position', [150 5 80 20]);
    
    %Create face edit label and edit box
-   faceEditLabel = uilabel(viewTab, 'Text', 'faceEdit', 'Position', [28 365 50 15]);
+   faceEditLabel = uilabel(viewTab, 'Text', 'faceEdit', 'Position', [28 345 50 15]);
    
    faceEditBox = uitextarea(viewTab, "Value", '', ...
-       "Position", [80 345 190 35], 'Editable', 'on', 'HorizontalAlignment', 'left', 'WordWrap', 'on');
+       "Position", [80 325 190 35], 'Editable', 'on', 'HorizontalAlignment', 'left', 'WordWrap', 'on');
 
-   faceZoomBtn = uibutton(viewTab, 'push', 'Text', 'Zoom', 'Position', [28 345 50 15],...
+   faceZoomBtn = uibutton(viewTab, 'push', 'Text', 'Zoom', 'Position', [28 325 50 15],...
        'FontSize', 8, 'ButtonPushedFcn', @faceZoomCb);
 
    %Create point edit label and edit box
-   ptEditLabel = uilabel(viewTab, 'Text', 'pointEdit', 'Position', [28 325 50 15]);
+   ptEditLabel = uilabel(viewTab, 'Text', 'pointEdit', 'Position', [28 305 50 15]);
    
-   ptEditBox = uitextarea(viewTab, "Value", '', "Position", [80 305 190 35], ...
+   ptEditBox = uitextarea(viewTab, "Value", '', "Position", [80 285 190 35], ...
        'Editable', 'on', 'HorizontalAlignment', 'left', 'WordWrap', 'on');
 
-   ptZoomBtn = uibutton(viewTab, 'push', 'Text', 'Zoom', 'Position', [28 305 50 15],...
+   ptZoomBtn = uibutton(viewTab, 'push', 'Text', 'Zoom', 'Position', [28 285 50 15],...
        'FontSize', 8, 'ButtonPushedFcn', @ptZoomCb);
     
     faceEditBox.Tooltip = sprintf(['Allowed formats:\n' ...
@@ -206,22 +208,29 @@ function nwkViewer()
 
    %Create the Display and Reset button
    displayButton = uibutton(viewTab, 'Text', 'Display',...
-       'Position', [30 277 75 20], 'ButtonPushedFcn', @updateSelections);
+       'Position', [30 257 60 20], 'FontSize', 10, 'ButtonPushedFcn', @updateSelections);
 
    resetButton = uibutton(viewTab, 'Text', 'Reset',...
-       'Position', [115 277 75 20],'ButtonPushedFcn', @resetSelections);
+       'Position', [100 257 60 20], 'FontSize', 10, 'ButtonPushedFcn', @resetSelections);
 
    resetButton.Tooltip = sprintf(['Clears text in the edit boxes, resets the view to `Both`\n' ...
        'and redraws the graph using group colors.']);
 
    editButton = uibutton(viewTab, 'Text', 'Edit',...
-       'Position', [195 277 75 20], 'ButtonPushedFcn', @editSelections);
+       'Position', [170 257 60 20], 'FontSize', 10, 'ButtonPushedFcn', @editSelections);
 
    editButton.Tooltip = sprintf(['Edit the point coordiantes of selected point indices, and\n' ...
        'Edit the group id, diameter and endpoints of selected face indices']);
 
+   % Create a toggle button that switches between 'AND' and 'OR'
+   andOrBtn = uibutton(viewTab, 'Text', 'AND', 'FontSize', 10, 'Position', [235 257 40 20], ...
+      'ButtonPushedFcn', @andOrCb);
+
+   andOrBtn.Tooltip = sprintf(['Gives faces, points that are a Union\n' ...
+       'of faceEdit and ptEdit conditions']);
+
    %Create a tabbed panel with color selections
-   colorTab = uitabgroup(viewTab, 'Position', [20, 28, 260, 235], 'SelectionChangedFcn', {@onTabSelection});
+   colorTab = uitabgroup(viewTab, 'Position', [20, 28, 260, 215], 'SelectionChangedFcn', {@onTabSelection});
    faceGrp = uitab(colorTab, 'Title', 'FaceGroup', 'BackgroundColor', [0.8, 0.8, 0.8], 'Scrollable', 'on');
    propertiesTab = uitab(colorTab, 'Title', 'Properties', 'BackgroundColor', [0.8, 0.8, 0.8], 'Scrollable', 'on');
 
@@ -253,7 +262,49 @@ function nwkViewer()
         'EdgeColor', 'none', 'HorizontalAlignment', 'right');
 
 
-%%%%%%%%%%%%%%%%%%%%%%%% UI Callback functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
+%%%%%%%%%%%%%%%%%%%%%%%% UI Callback functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+   function togglePtCloudCb(~, ~)
+       fig.Pointer = 'watch'; axesFig.Pointer = 'watch';
+
+       if togglePtCloudView.Value
+
+            if ~isempty(rendererTable.plotHandle{activeIdx})
+                delete(rendererTable.plotHandle{activeIdx});
+            end
+
+            % take the maximum radius among all connected faces.
+            indices = [activeNwk.faceMx(:,2); activeNwk.faceMx(:,3)];
+            radius = [activeNwk.dia / 2 ; activeNwk.dia / 2];
+            activeNwk.ptRad = accumarray(indices, radius, [activeNwk.np, 1], @max, 0);
+            
+            % take the majority of group id among all connected faces
+            group_ids = [activeNwk.faceMx(:,1); activeNwk.faceMx(:,1)];
+            activeNwk.ptGroup = accumarray(indices, group_ids, [activeNwk.np, 1], @mode, 0);
+            ptColorMapping = cell2mat(arrayfun(@(g) rendererTable.grpColors{activeIdx}{g}, activeNwk.ptGroup, 'UniformOutput', false));
+            
+            pcloud = pointCloud(activeNwk.ptCoordMx, 'Intensity', activeNwk.ptRad, 'Color', ptColorMapping);
+            activeHandle = pcshow(pcloud, 'Parent', ax, 'AxesVisibility', 'off', 'BackgroundColor', [1 1 1]);
+            axis 'off';
+
+            rendererTable.plotHandle{activeIdx} = activeHandle;
+            activeHandle.UserData(1).type = 'ptCloud';
+
+       elseif strcmp(activeHandle.UserData(1).type, 'ptCloud') && ~togglePtCloudView.Value
+           if  ~isempty(ptEditBox.Value{1}) || ~isempty(faceEditBox.Value{1})
+                  updateSelections();
+           else
+               if ~isempty(colorGrp.Children)
+                   updateFaceProp();
+               else
+                   faceGrpEditCb();
+                   colorbar("off");
+               end
+           end
+       end
+
+       fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
+   end    
     
    function togglePlotCb(~, ~, facesList, faceProp, collColor)
 
@@ -464,8 +515,6 @@ function nwkViewer()
 
     function loadScene(filePath, view, collColor)
         [path, name, ext] = fileparts(filePath);
-
-        if strcmp(ext, '.nwkx'); ext = '.fMx'; end
 
          if strcmp(ext, '.fMx')
              activeNwk = nwkHelp.load(fullfile(path, name));
@@ -887,6 +936,8 @@ function nwkViewer()
 
     function boundingBoxCb(~, ~)
 
+        fig.Pointer = 'watch'; axesFig.Pointer = 'watch';
+
         if  boundingBoxOn.Value
         
             % Define padding percentage
@@ -943,9 +994,12 @@ function nwkViewer()
             delete(rendererTable.boxHandle{activeIdx});
         end
 
+        fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
     end
 
     function labelsOnCb(~, ~)
+
+        fig.Pointer = 'watch'; axesFig.Pointer = 'watch';
 
         % Always shows only 100 labels
         tic;
@@ -983,14 +1037,17 @@ function nwkViewer()
             set(activeHandle, 'NodeLabel', '', 'EdgeLabel', '');
         end
 
+        fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
     end
 
     function directionsOnCb(~, ~)
+
+        fig.Pointer = 'watch'; axesFig.Pointer = 'watch';
+        
         if directionsOn.Value && strcmp(activeHandle.UserData(1).type, 'graph') || ~directionsOn.Value && strcmp(activeHandle.UserData(1).type, 'digraph')
             plotGraph();
-            reColorGrps();
             updateEndPoints();
-            updateEndFaces();
+            updateEndFaces(); % This calls recoloring of groups inside it
         elseif directionsOn.Value && strcmp(activeHandle.UserData(1).type, 'subgraph') || ~directionsOn.Value && strcmp(activeHandle.UserData(1).type, 'disubgraph')
 
             if isfield(activeHandle.UserData, 'groups') && ~isempty(activeHandle.UserData(1).groups)
@@ -999,11 +1056,15 @@ function nwkViewer()
                   updateSelections();
             end
 
-        end    
+        end
+
+        fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
     end    
 
 
     function updateEndPoints(~, ~)
+
+        fig.Pointer = 'watch'; axesFig.Pointer = 'watch';
 
         if ~contains(activeHandle.UserData(1).type, 'graph')
             return;
@@ -1071,9 +1132,13 @@ function nwkViewer()
 
         end
 
+        fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
+
     end
 
     function updateEndFaces(~, ~)
+
+        fig.Pointer = 'watch'; axesFig.Pointer = 'watch';
 
         if ~contains(activeHandle.UserData(1).type, 'graph')
             return;
@@ -1367,7 +1432,7 @@ function nwkViewer()
         if selectionRb2.Value
             
             plotSubsetFacesPts(faceSelections, ptSelections);
-            reColorGrps();
+            %reColorGrps(); %commented out for Emilie
 
             try
                 activeHandle.UserData(1).selections = {strjoin(ptEditBox.Value, ''), strjoin(faceEditBox.Value, ''), 2};
@@ -1381,7 +1446,7 @@ function nwkViewer()
             faceSelections = setdiff(1:activeNwk.nf, faceSelections)';
 
             plotSubsetFacesPts(faceSelections, ptSelections);
-            reColorGrps();
+            %reColorGrps(); %commented out for Emilie
 
             try
                 activeHandle.UserData(1).selections = {strjoin(ptEditBox.Value, ''), strjoin(faceEditBox.Value, ''), 3};
@@ -1409,9 +1474,9 @@ function nwkViewer()
 
         end
 
-        if ~isempty(ptSelections) || ~isempty(faceSelections)
-            writeToReport('Selected points and faces: ', ptSelections, faceSelections);
-        end
+        %if ~isempty(ptSelections) || ~isempty(faceSelections)
+        %    writeToReport('Selected points and faces: ', ptSelections, faceSelections);
+        %end
 
         fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
 
@@ -1708,9 +1773,8 @@ function nwkViewer()
                  togglePlotCb([], [], (1:activeNwk.nf)', activeNwk.dia);
              else
                 plotGraph();
-                reColorGrps();
                 updateEndPoints();
-                updateEndFaces();
+                updateEndFaces(); % Inside this endfaces - we call recoloring based on groups
              end
 
         elseif size(facesList, 1) == 0
@@ -1741,30 +1805,6 @@ function nwkViewer()
         
     end
 
-    function colorGrpEditCb(src, ~)
-
-        grpId = src.UserData;
-        facesList = find(ismember(activeNwk.faceMx(:, 1), grpId));
-        faceRows = find(ismember(activeG.Edges.Weight(:), facesList));
-
-        % set(activeHandle, 'EdgeColor', 'k', 'LineWidth', 2);
-
-        rendererTable.grpColors{activeIdx}{grpId} = src.Value;
-
-        highlight(activeHandle, activeG.Edges.EndNodes(faceRows, 1),...
-            activeG.Edges.EndNodes(faceRows, 2), 'EdgeColor', src.Value);
-
-        % Works only for whole graph, not for subG graph
-
-        % grpId = src.UserData;
-        % facesList = find(ismember(activeNwk.faceMx(:, 1), grpId));
-        % 
-        % highlight(activeHandle, activeNwk.faceMx(facesList, 2),...
-        %      activeNwk.faceMx(facesList, 3), 'EdgeColor', src.Value);
-
-    end
-
-
     function plotSubsetFacesPts(facesList, ptsList)
 
             uniquePts = [];
@@ -1779,40 +1819,77 @@ function nwkViewer()
                 type = 'subgraph';
             end
 
-            if ~isempty(facesList)
-                uniquePts = unique(activeNwk.faceMx(facesList, 2:3));
-                newFaces = zeros(size(facesList, 1), 3);
-                indexMap = containers.Map(uniquePts, 1:length(uniquePts));
-                for i = 1:numel(facesList)
-                      newFaces(i, :) = [indexMap(activeNwk.faceMx(facesList(i), 2)),...
-                          indexMap(activeNwk.faceMx(facesList(i), 3)), facesList(i)];
+            if (strcmp(andOrBtn.Text, 'AND'))
+
+                % Code for Doing a AND / Intersection of faceEdit and PtEdit
+                if (isempty(ptsList))
+                    ptsList = unique(activeNwk.faceMx(facesList, 2:3));
                 end
 
-                if directionsOn.Value
-                    subG = digraph(newFaces(:, 1), newFaces(:, 2), newFaces(:, 3));
-                else    
-                    subG = graph(newFaces(:, 1), newFaces(:, 2), newFaces(:, 3));
+                if ~isempty(facesList) && ~isempty(ptsList)
+                    endpoints = activeNwk.faceMx(facesList, 2:3);
+                    % Faces that have atleast one endpoint in selcted points - use all or any function
+                    validFaces = any(ismember(endpoints, ptsList), 2);
+                    filteredFacesList = facesList(validFaces);
+                    
+                    if ~isempty(filteredFacesList)
+                        uniquePts = unique(activeNwk.faceMx(filteredFacesList, 2:3));
+                        
+                        [~, newInlet] = ismember(activeNwk.faceMx(filteredFacesList, 2), uniquePts);
+                        [~, newOutlet] = ismember(activeNwk.faceMx(filteredFacesList, 3), uniquePts);
+                        newFaces = [newInlet, newOutlet, filteredFacesList(:)];
+                        
+                        if directionsOn.Value
+                            subG = digraph(newFaces(:,1), newFaces(:,2), newFaces(:,3));
+                        else
+                            subG = graph(newFaces(:,1), newFaces(:,2), newFaces(:,3));
+                        end
+                        
+                        subG.Nodes.X = activeNwk.ptCoordMx(uniquePts, 1);
+                        subG.Nodes.Y = activeNwk.ptCoordMx(uniquePts, 2);
+                        subG.Nodes.Z = activeNwk.ptCoordMx(uniquePts, 3);
+                        subG.Nodes.Labels = uniquePts(:);
+                    end
+                elseif (isempty(facesList) && ~isempty(ptsList))
+                    uniquePts = unique(ptsList);
+                    subG = addnode(subG, size(uniquePts, 1));
+                    subG.Nodes.X = activeNwk.ptCoordMx(uniquePts, 1);
+                    subG.Nodes.Y = activeNwk.ptCoordMx(uniquePts, 2);
+                    subG.Nodes.Z = activeNwk.ptCoordMx(uniquePts, 3);
+                    subG.Nodes.Labels = uniquePts(:);
                 end
 
-                subG.Nodes.X = activeNwk.ptCoordMx(uniquePts, 1);
-                subG.Nodes.Y = activeNwk.ptCoordMx(uniquePts, 2);
-                subG.Nodes.Z = activeNwk.ptCoordMx(uniquePts, 3);
-                subG.Nodes.Labels = uniquePts(:);
-            end
+            else
 
-            if ~isempty(ptsList)
-                diffPtsList = setdiff(ptsList, uniquePts);
-                subG = addnode(subG, size(diffPtsList, 1));
-                if isempty(uniquePts)
-                    np = 0;
-                else
-                    np = size(uniquePts, 1);
+                % Code for Doing a OR / Union of faceEdit and PtEdit
+                if ~isempty(facesList)
+                    uniquePts = unique(activeNwk.faceMx(facesList, 2:3));
+    
+                    [~, newInlet] = ismember(activeNwk.faceMx(facesList, 2), uniquePts);
+                    [~, newOutlet] = ismember(activeNwk.faceMx(facesList, 3), uniquePts);                
+                    newFaces = [newInlet, newOutlet, facesList(:)];
+    
+                    if directionsOn.Value
+                        subG = digraph(newFaces(:, 1), newFaces(:, 2), newFaces(:, 3));
+                    else    
+                        subG = graph(newFaces(:, 1), newFaces(:, 2), newFaces(:, 3));
+                    end
+    
+                    subG.Nodes.X = activeNwk.ptCoordMx(uniquePts, 1);
+                    subG.Nodes.Y = activeNwk.ptCoordMx(uniquePts, 2);
+                    subG.Nodes.Z = activeNwk.ptCoordMx(uniquePts, 3);
+                    subG.Nodes.Labels = uniquePts(:);
                 end
-
-                for i = 1:length(diffPtsList)
-                    idx = np + i;
-                    subG.Nodes{idx, {'X', 'Y', 'Z'}} = activeNwk.ptCoordMx(diffPtsList(i), :);
-                    subG.Nodes.Labels(idx) = diffPtsList(i);
+    
+                if ~isempty(ptsList)
+                    diffPtsList = setdiff(ptsList, uniquePts);
+                    subG = addnode(subG, size(diffPtsList, 1));     
+                    np = size(uniquePts, 1)+1;
+    
+                    subG.Nodes.X(np: (np+length(diffPtsList)-1)) = activeNwk.ptCoordMx(diffPtsList, 1);
+                    subG.Nodes.Y(np: (np+length(diffPtsList)-1)) = activeNwk.ptCoordMx(diffPtsList, 2);
+                    subG.Nodes.Z(np: (np+length(diffPtsList)-1)) = activeNwk.ptCoordMx(diffPtsList, 3);
+                    subG.Nodes.Labels(np: (np+length(diffPtsList)-1)) = diffPtsList;
                 end
             end
 
@@ -1900,12 +1977,19 @@ function nwkViewer()
        if strcmp(activeHandle.UserData(1).type, 'cylinders')
            return
        end
+        
+        % Get group IDs for subset faces in active graph 
+        % Get colors from grpColors dictionary, convert to matrix
+        
+        % update color changes in groups
+        for i = 1:size(tableGrpBoxes, 1)
+           rendererTable.grpColors{activeIdx}{tableGrpBoxes.colorPickers{i}.UserData} = tableGrpBoxes.colorPickers{i}.Value;
+        end
+        
+        grpIds = activeNwk.faceMx(activeG.Edges.Weight(:), 1);
+        faceColors = cell2mat(rendererTable.grpColors{activeIdx}(grpIds));
 
-       for i = 1:size(tableGrpBoxes, 1)
-             if tableGrpBoxes.grpBoxHandles{i}.Value 
-                colorGrpEditCb(tableGrpBoxes.colorPickers{i});
-             end
-       end
+        set(activeHandle, 'EdgeColor', faceColors);
 
     end
 
@@ -1939,9 +2023,9 @@ function nwkViewer()
                  if strcmp(condition(1), 'd')
                     searchCol = activeNwk.dia;
 
-                elseif strcmp(condition(1:2), 'ls')
+                 elseif strcmp(condition(1:2), 'ls')
                      KFfile = 'KF_WM_TV_straight_LCC.faceDistance';
-    
+     
                      if isfield(activeNwk, 'faceDistance')
                          searchCol = activeNwk.faceDistance;
                      elseif ~isfield(activeNwk, 'faceDistance') && exist(KFfile, 'file') == 2
@@ -1949,7 +2033,7 @@ function nwkViewer()
                          searchCol = activeNwk.faceDistance;
                      else
                          disp('KF_WM_TV_straight_LCC.faceDistance file not found');
-                         return;
+                        return;
                      end
 
                  elseif strcmp(condition(1), 'l')
@@ -2445,4 +2529,308 @@ function nwkViewer()
         end
     end    
  
+    function faceZoomCb(~, ~)
+        zoomFig = figure('Name', 'Face Zoom View', 'Position', [300 300 800 400], 'Resize', 'on', ...
+                         'Visible', 'off', 'SizeChangedFcn', @resizeFaceZoom, 'NumberTitle', 'off', ...
+                         'CloseRequestFcn', @onCloseZoomFig);
+        
+        expandPathState = [];
+        setappdata(zoomFig, 'expandPathState', expandPathState);
+        expandChildState = [];
+        setappdata(zoomFig, 'expandChildState', expandChildState);
+                     
+        buttonNames = {'Labels', 'Directions', 'Reset Zoom', 'Toggle Cylinders', 'Expand Path', 'Expand Children'};
+        buttonWidths = [60, 80, 80, 130, 100, 120];
+        buttonCallbacks = {@labelsFaceZoomCb, @DirectionsFaceZoomCb, @ResetFaceZoomCb, ...
+                    @cylindersFaceZoomCb, @ExpandPathFaceZoomCb, @ExpandChildrenFaceZoomCb };
+
+        spacing = 10; margin = 10; buttonPanelHeight = 40;
+        totalWidth = sum(buttonWidths) + spacing*(numel(buttonNames)-1);
+
+        % Get figure position and create the button panel.
+        figPos = get(zoomFig, 'Position');
+        buttonPanel = uipanel(zoomFig, 'Units', 'pixels', ...
+                              'Position', [margin, figPos(4)-margin-buttonPanelHeight, totalWidth, buttonPanelHeight], ...
+                              'BorderType', 'none');
+    
+        % Loop over the arrays to create each button.
+        xPos = 0; buttonHandles = gobjects(1, length(buttonNames));
+        for i = 1:length(buttonNames)
+            buttonHandles(i) = uicontrol(buttonPanel, 'Style', 'pushbutton', 'String', buttonNames{i}, ...
+                      'Units', 'pixels', 'Position', [xPos, 0, buttonWidths(i), buttonPanelHeight], ...
+                      'Callback', buttonCallbacks{i});
+            xPos = xPos + buttonWidths(i) + spacing;
+        end
+
+        % Create the blank panel that will contain the axes.
+        blankPanel = uipanel(zoomFig, 'Units', 'pixels', ...
+                             'Position', [margin, margin, figPos(3)-2*margin, figPos(4)-buttonPanelHeight-2*margin], ...
+                             'BackgroundColor', [1 1 1]);
+    
+        % Create an axes inside the blank panel.
+        axFaceZoom = axes('Parent', blankPanel, 'Units', 'normalized', 'Position', [0 0 1 1], 'Color', [1 1 1]);
+        axis(axFaceZoom, 'off');
+
+        % Get faces list, and the first one of them
+        faceZoomList = faceEditCb();
+        if isempty(faceZoomList)
+            firstFaceIdx = 1;
+        else
+            firstFaceIdx = faceZoomList(1);
+        end
+
+        if ~isempty(activeNwk)
+            fZoomG = graph(activeNwk.faceMx(:,2), activeNwk.faceMx(:,3), 1:activeNwk.nf);
+            type = 'graph';
+            fZoomG.Nodes = table(activeNwk.ptCoordMx(:,1), activeNwk.ptCoordMx(:,2), activeNwk.ptCoordMx(:,3), ...
+                    'VariableNames', {'X','Y','Z'});
+            fZoomG.Nodes.Labels(:) = 1:activeNwk.np;
+        
+            hold(axFaceZoom, 'on');
+            faceZoomHandle = plot(fZoomG, 'XData', fZoomG.Nodes.X, 'YData', fZoomG.Nodes.Y, 'ZData', fZoomG.Nodes.Z, ...
+                'NodeColor', nodeColor, 'EdgeColor', [0 0 0.5], 'NodeLabel', {}, ...
+                'MarkerSize', 2, 'LineWidth', 2, 'Parent', axFaceZoom);
+            hold(axFaceZoom, 'off');
+            faceZoomHandle.UserData = struct('type', type, 'selections', {}, 'groups', []);
+            faceEdgeIdx = find(fZoomG.Edges.Weight == firstFaceIdx);
+            highlight(faceZoomHandle, fZoomG.Edges.EndNodes(faceEdgeIdx,1), fZoomG.Edges.EndNodes(faceEdgeIdx,2), ...
+                        'EdgeColor', 'green', 'LineWidth', 4);
+
+            set(buttonHandles(strcmp(buttonNames, 'Expand Path')), 'Callback', ...
+                @(src, evt) expandPathZoomCb(src, evt, zoomFig, faceZoomHandle, firstFaceIdx, []));
+            set(buttonHandles(strcmp(buttonNames, 'Expand Children')), 'Callback', ...
+                 @(src, evt) expandChildrenZoomCb(src, evt, zoomFig, faceZoomHandle, firstFaceIdx, []));
+
+
+
+            endNodes = fZoomG.Edges.EndNodes(faceEdgeIdx, :);
+            pt1 = [fZoomG.Nodes.X(endNodes(1)), fZoomG.Nodes.Y(endNodes(1)), fZoomG.Nodes.Z(endNodes(1))];
+            pt2 = [fZoomG.Nodes.X(endNodes(2)), fZoomG.Nodes.Y(endNodes(2)), fZoomG.Nodes.Z(endNodes(2))];
+            midpoint = (pt1 + pt2) / 2;
+            faceSize = norm(pt1 - pt2); camOffset = 0.7 * faceSize;
+            
+            camPos = midpoint + [0, 0, camOffset]; % Set CameraPosition along Z direction
+            set(axFaceZoom, 'CameraTarget', midpoint, 'CameraPosition', camPos); %, 'CameraViewAngle', 10);
+        end
+
+        set(zoomFig, 'Visible', 'on');
+        set(axFaceZoom, 'WindowScrollWheelFcn', @(~, evt) axScrollZoomCb(evt, axFaceZoom));
+    
+        function resizeFaceZoom(src, ~)
+             figPos = get(src, 'Position');
+             set(buttonPanel, 'Position', [margin, figPos(4)-margin-buttonPanelHeight, totalWidth, buttonPanelHeight]);
+             set(blankPanel, 'Position', [margin, margin, figPos(3)-2*margin, figPos(4)-buttonPanelHeight-2*margin]);
+        end
+    end
+
+    function ptZoomCb(~, ~)
+        zoomFig = figure('Name', 'Point Zoom View', 'Position', [300 300 800 400], 'Resize', 'on', ...
+                         'Visible', 'off', 'SizeChangedFcn', @resizeFaceZoom, 'NumberTitle', 'off', ...
+                         'CloseRequestFcn', @onCloseZoomFig);
+        
+        expandPathState = []; setappdata(zoomFig, 'expandPathState', expandPathState);
+        expandChildState = []; setappdata(zoomFig, 'expandChildState', expandChildState);
+                     
+        buttonNames = {'Labels', 'Directions', 'Reset Zoom', 'Toggle Cylinders', 'Expand Path', 'Expand Children'};
+        buttonWidths = [60, 80, 80, 130, 100, 120];
+        buttonCallbacks = {@labelsFaceZoomCb, @DirectionsFaceZoomCb, @ResetFaceZoomCb, ...
+                    @cylindersFaceZoomCb, @expandPathZoomCb, @expandChildrenZoomCb };
+
+        spacing = 10; margin = 10; buttonPanelHeight = 40;
+        totalWidth = sum(buttonWidths) + spacing*(numel(buttonNames)-1);
+
+        % Get figure position and create the button panel.
+        figPos = get(zoomFig, 'Position');
+        buttonPanel = uipanel(zoomFig, 'Units', 'pixels', ...
+                              'Position', [margin, figPos(4)-margin-buttonPanelHeight, totalWidth, buttonPanelHeight], ...
+                              'BorderType', 'none');
+    
+        % Loop over the arrays to create each button.
+        xPos = 0; buttonHandles = gobjects(1, length(buttonNames));
+        for i = 1:length(buttonNames)
+            buttonHandles(i) = uicontrol(buttonPanel, 'Style', 'pushbutton', 'String', buttonNames{i}, ...
+                      'Units', 'pixels', 'Position', [xPos, 0, buttonWidths(i), buttonPanelHeight], ...
+                      'Callback', buttonCallbacks{i});
+            xPos = xPos + buttonWidths(i) + spacing;
+        end
+
+        % Create the blank panel that will contain the axes, create an axes inside the blank panel.
+        blankPanel = uipanel(zoomFig, 'Units', 'pixels', ...
+                             'Position', [margin, margin, figPos(3)-2*margin, figPos(4)-buttonPanelHeight-2*margin], ...
+                             'BackgroundColor', [1 1 1]);
+        axPtZoom = axes('Parent', blankPanel, 'Units', 'normalized', 'Position', [0 0 1 1], 'Color', [1 1 1]);
+        axis(axPtZoom, 'off');
+
+        % Get faces list, and the first one of them
+        ptZoomList = ptEditCb();
+        if isempty(ptZoomList)
+            firstPtIdx = 1;
+        else
+            firstPtIdx = ptZoomList(1);
+        end
+
+        if ~isempty(activeNwk)
+            ptZoomG = graph(activeNwk.faceMx(:,2), activeNwk.faceMx(:,3), 1:activeNwk.nf);
+            type = 'graph';
+            ptZoomG.Nodes = table(activeNwk.ptCoordMx(:,1), activeNwk.ptCoordMx(:,2), activeNwk.ptCoordMx(:,3), ...
+                    'VariableNames', {'X','Y','Z'});
+            ptZoomG.Nodes.Labels(:) = 1:activeNwk.np;
+        
+            hold(axPtZoom, 'on');
+            ptZoomHandle = plot(ptZoomG, 'XData', ptZoomG.Nodes.X, 'YData', ptZoomG.Nodes.Y, 'ZData', ptZoomG.Nodes.Z, ...
+                'NodeColor', nodeColor, 'EdgeColor', [0 0 0.5], 'NodeLabel', {}, ...
+                'MarkerSize', 2, 'LineWidth', 2, 'Parent', axPtZoom);
+            hold(axPtZoom, 'off');
+            ptZoomHandle.UserData = struct('type', type, 'selections', {}, 'groups', []);
+            ptIdx = find(ptZoomG.Nodes.Labels == firstPtIdx);
+            highlight(ptZoomHandle, ptIdx, 'NodeColor', nodeColor, 'MarkerSize', 2);
+
+            set(buttonHandles(strcmp(buttonNames, 'Expand Path')), 'Callback', ...
+                @(src, evt) expandPathZoomCb(src, evt, zoomFig, ptZoomHandle, [], firstPtIdx));
+            set(buttonHandles(strcmp(buttonNames, 'Expand Children')), 'Callback', ...
+                 @(src, evt) expandChildrenZoomCb(src, evt, zoomFig, ptZoomHandle, [], firstPtIdx));
+        end
+
+        set(zoomFig, 'Visible', 'on');
+    
+        function resizeFaceZoom(src, ~)
+             figPos = get(src, 'Position');
+             set(buttonPanel, 'Position', [margin, figPos(4)-margin-buttonPanelHeight, totalWidth, buttonPanelHeight]);
+             set(blankPanel, 'Position', [margin, margin, figPos(3)-2*margin, figPos(4)-buttonPanelHeight-2*margin]);
+        end
+    end
+
+    function expandChildrenZoomCb(~, ~, zoomFig, zoomHandle, firstFaceIdx, firstPtIdx)
+        stateVar = getappdata(zoomFig, 'expandChildState');
+        if isempty(stateVar)
+            stateVar.C1 = nwkHelp.ConnectivityMx(activeNwk);
+            stateVar.C2 = stateVar.C1';
+
+            stateVar.visitedPts = containers.Map(num2cell(1:activeNwk.np), num2cell(false(1, activeNwk.np)));
+            stateVar.visitedFaces = containers.Map(num2cell(1:activeNwk.nf), num2cell(false(1, activeNwk.nf)));
+
+            if (~isempty(firstFaceIdx))
+                stateVar.visitedFaces(firstFaceIdx) = true;
+                for p = activeNwk.faceMx(firstFaceIdx,2:3), stateVar.visitedPts(p) = true; end
+                stateVar.currentPts = activeNwk.faceMx(firstFaceIdx,3);
+            elseif (~isempty(firstPtIdx))
+                stateVar.visitedPts(firstPtIdx) = true;
+                stateVar.currentPts = firstPtIdx;
+            end
+
+        end
+
+        [ptsDown, facesDown] = nwkHelp.findDownPtsAndFaces(stateVar.currentPts, stateVar.C1, stateVar.C2);
+        newPts = unique(ptsDown); newFaces = unique(facesDown);
+
+        % Remove already visited
+        newPts = newPts(~cellfun(@(x) x, values(stateVar.visitedPts, num2cell(newPts))));
+        newFaces = newFaces(~cellfun(@(x) x, values(stateVar.visitedFaces, num2cell(newFaces))));
+
+        % Book keeping, Mark new points and faces as visited, reset current points
+        if isempty(newFaces)
+            disp('No new faces to expand.'); return;
+        end
+
+        for p = newPts'
+            stateVar.visitedPts(p) = true;
+        end
+        for f = newFaces'
+            stateVar.visitedFaces(f) = true;
+        end
+        stateVar.currentPts = newPts;
+
+        % Highlight faces
+        if ~isempty(newFaces)
+            highlight(zoomHandle, activeNwk.faceMx(newFaces, 2), activeNwk.faceMx(newFaces, 3), ...
+                'EdgeColor', 'green', 'LineWidth', 4);
+        end
+        
+        setappdata(zoomFig, 'expandChildState', stateVar);
+    end
+
+    function expandPathZoomCb(~, ~, zoomFig, zoomHandle, firstFaceIdx, firstPtIdx)
+        stateVar = getappdata(zoomFig, 'expandPathState');
+        if isempty(stateVar)
+            stateVar.C1 = nwkHelp.ConnectivityMx(activeNwk);
+            stateVar.C2 = stateVar.C1';
+
+            stateVar.visitedPts = containers.Map(num2cell(1:activeNwk.np), num2cell(false(1, activeNwk.np)));
+            stateVar.visitedFaces = containers.Map(num2cell(1:activeNwk.nf), num2cell(false(1, activeNwk.nf)));
+
+            if (~isempty(firstFaceIdx))
+                stateVar.visitedFaces(firstFaceIdx) = true;
+                for p = activeNwk.faceMx(firstFaceIdx,2:3), stateVar.visitedPts(p) = true; end
+                stateVar.currentPts = activeNwk.faceMx(firstFaceIdx,2:3);
+            elseif (~isempty(firstPtIdx))
+                stateVar.visitedPts(firstPtIdx) = true;
+                stateVar.currentPts = firstPtIdx;
+            end
+        end
+
+        [ptsUp, facesUp] = nwkHelp.findUpPtsAndFaces(stateVar.currentPts, stateVar.C1, stateVar.C2);
+        [ptsDown, facesDown] = nwkHelp.findDownPtsAndFaces(stateVar.currentPts, stateVar.C1, stateVar.C2);
+        newPts = unique([ptsUp; ptsDown]); newFaces = unique([facesUp; facesDown]);
+
+        % Remove already visited
+        newPts = newPts(~cellfun(@(x) x, values(stateVar.visitedPts, num2cell(newPts))));
+        newFaces = newFaces(~cellfun(@(x) x, values(stateVar.visitedFaces, num2cell(newFaces))));
+
+        % Book keeping, Mark new points and faces as visited, reset current points
+        if isempty(newFaces)
+            disp('No new faces to expand.'); return;
+        end
+
+        for p = newPts'
+            stateVar.visitedPts(p) = true;
+        end
+        for f = newFaces'
+            stateVar.visitedFaces(f) = true;
+        end
+        stateVar.currentPts = newPts;
+
+        % Highlight faces
+        if ~isempty(newFaces)
+            highlight(zoomHandle, activeNwk.faceMx(newFaces, 2), ...
+                activeNwk.faceMx(newFaces, 3), 'EdgeColor', 'green', 'LineWidth', 4);
+        end
+        
+        setappdata(zoomFig, 'expandPathState', stateVar);
+    end
+
+    function onCloseZoomFig(src, ~)
+        if isappdata(src, 'expandPathState')
+            rmappdata(src, 'expandPathState');
+        end
+        if isappdata(src, 'expandChildState')
+            rmappdata(src, 'expandChildState');
+        end
+        delete(src);
+    end
+
+    function axScrollZoomCb(~, event, axZoom)
+        zoomFactor = 0.1;  % Adjust how fast zooming happens
+        scrollDist = event.VerticalScrollCount; axZoom.Pointer = 'watch';
+    
+        camPos = get(axZoom, 'CameraPosition'); camTarget = get(axZoom, 'CameraTarget');
+        newCamPos = camPos - scrollDist * zoomFactor * (camPos - camTarget);
+
+        newZoomDist = norm(newCamPos - camTarget);
+        if newZoomDist >= minZoomDist && newZoomDist <= maxZoomDist
+            set(axZoom, 'CameraViewAngleMode', 'manual', 'CameraPosition', newCamPos);
+        end
+        axZoom.Pointer = 'arrow';
+    end
+
+    function andOrCb(~, ~)
+      if strcmp(andOrBtn.Text, 'AND')
+        andOrBtn.Text = 'OR';
+        andOrBtn.Tooltip = sprintf('Gives faces, points that are a Intersection\nof faceEdit and ptEdit conditions');
+      else
+        andOrBtn.Text = 'AND';
+        andOrBtn.Tooltip = sprintf('Gives faces, points that are a Union\nof faceEdit and ptEdit conditions');
+      end
+      updateSelections();
+    end
+
 end
