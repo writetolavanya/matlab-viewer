@@ -28,6 +28,7 @@ function nwkViewer()
    global nodeColor preColor;
 
    global initialXLimits initialYLimits initialZLimits;
+   global selectedFaces;
 
    initialXLimits = [0 5];
    initialYLimits = [0 5];
@@ -62,6 +63,9 @@ function nwkViewer()
 
    % For shortest path pt storage
    twoPts4Paths = [];
+   twoPts4MultiSelect = [];
+   multiSelectFaceIdx = [];
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% UI options and tooltips %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
 
@@ -249,18 +253,38 @@ function nwkViewer()
 
    warning('off', 'all');
 
-   shortestPathSelect = uicheckbox(pathTab, "Text", "shortestPathSelect",...
+   %%%%%%%%%%%%%%%%% UI options in Path tab %%%%%%%%%%%%%%%%%%
+
+    shortestPathSelect = uicheckbox(pathTab, "Text", "shortestPathSelect",...
        "Position",[18, 600, 255, 60], "ValueChangedFcn", @shortestPathCb);
 
-   connectedComp = uicheckbox(pathTab, "Text", "connectedComponents", ...
+    connectedComp = uicheckbox(pathTab, "Text", "connectedComponents", ...
        "Position",[18, 530, 255, 60], "ValueChangedFcn", @connectedCompCb);
+
+    multiSelect =  uicheckbox(pathTab, "Text", "multiSelectFaces",...
+       "Position", [18, 480, 120, 30], "ValueChangedFcn", @multiSelectCb);
+    
+    deleteFacesBtn = uibutton(pathTab, "Text", sprintf('Delete\nFaces'), ...
+        "Position", [130, 480, 50, 30], 'FontSize', 9,  "ButtonPushedFcn", @deleteFacesCb);
+    
+    assignGroupBtn = uibutton(pathTab, "Text", sprintf('Assign\nGroup'), ...
+        "Position", [185, 480, 50, 30], 'FontSize', 9,  "ButtonPushedFcn", @assignGroupCb);
+
+    groupIdBox = uicontrol(pathTab, 'Style', 'edit', 'Position', [240, 485, 40, 22]);
+
+    uilabel(pathTab, 'Text', 'Indexes of Selected Faces:', 'FontAngle', 'italic', 'FontColor', [0.3 0.3 0.3], ...
+        'FontSize', 8, 'Position', [28 460 150 15]);
+    
+    selectedFaces = uicontrol(pathTab, 'Style', 'edit', 'Max', 2, 'String', '', ...
+        'Position', [20, 200, 270, 255], 'HorizontalAlignment', 'left');
+
+   %%%%%%%%%%%%%%%%%%%%%%%% Annotation %%%%%%%%%%%%%%%%%%%%%%%%
 
    % Add annotation with author and supervisor
    annotation(fig, 'textbox', [0.3, 0.001, 0.65, 0.04], 'String', ...
         {'Authored by Lavanya Vaddavalli', 'Directed by Andreas Linninger'}, ...
         'FontSize', 8, 'FontAngle', 'italic', 'Color', [0.3 0.3 0.3], ...
         'EdgeColor', 'none', 'HorizontalAlignment', 'right');
-
 
 %%%%%%%%%%%%%%%%%%%%%%%% UI Callback functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -460,7 +484,7 @@ function nwkViewer()
              while ~feof(fid)
                 line = fgetl(fid);
                 
-                paths = regexp(line, 'filename=([^, ]+)', 'tokens');
+                paths = regexp(line, 'filename=''?([^,''"]+)''?', 'tokens');
                 colors = regexp(line, 'color=([^, ]+)', 'tokens');
                 views = regexp(line, 'view=([^, ]+)', 'tokens');
                 
@@ -515,6 +539,8 @@ function nwkViewer()
 
     function loadScene(filePath, view, collColor)
         [path, name, ext] = fileparts(filePath);
+
+         if strcmp(ext, '.nwkx'); ext = '.fMx'; end
 
          if strcmp(ext, '.fMx')
              activeNwk = nwkHelp.load(fullfile(path, name));
@@ -622,8 +648,23 @@ function nwkViewer()
             return;
         end
 
-        filename = fullfile(path, file);
-        nwkHelp.save(filename, activeNwk);
+        [~, baseName, ~] = fileparts(file);
+        pFileName = [baseName, '.pMx']; fFileName = [baseName, '.fMx']; dFileName = [baseName, '.dia'];
+  
+        fileID = fopen(fullfile(path, pFileName), 'w');
+        fprintf(fileID, '%.15f %.15f %.15f\n', [activeG.Nodes.X, activeG.Nodes.Y, activeG.Nodes.Z]');
+        fclose(fileID);
+
+        fileID = fopen(fullfile(path, fFileName), 'w');
+        fprintf(fileID, '%d %d %d %d %d\n', [activeNwk.faceMx(activeG.Edges.Weight(:), 1), activeG.Edges.EndNodes(:, 1), ...
+            activeG.Edges.EndNodes(:, 2), zeros(height(activeG.Edges), 1), zeros(height(activeG.Edges), 1)]');
+        fclose(fileID);
+
+        saveDia = activeNwk.dia(activeG.Edges.Weight(:));
+        fileID = fopen(fullfile(path, dFileName), 'w');
+        fprintf(fileID, '%.15f\n', saveDia);
+        fclose(fileID);
+
         disp(['Active Network saved to: ', fullfile(path, file)]);
 
     end
@@ -1432,7 +1473,7 @@ function nwkViewer()
         if selectionRb2.Value
             
             plotSubsetFacesPts(faceSelections, ptSelections);
-            %reColorGrps(); %commented out for Emilie
+            reColorGrps(); %commented out for Emilie
 
             try
                 activeHandle.UserData(1).selections = {strjoin(ptEditBox.Value, ''), strjoin(faceEditBox.Value, ''), 2};
@@ -1446,7 +1487,7 @@ function nwkViewer()
             faceSelections = setdiff(1:activeNwk.nf, faceSelections)';
 
             plotSubsetFacesPts(faceSelections, ptSelections);
-            %reColorGrps(); %commented out for Emilie
+            reColorGrps(); %commented out for Emilie
 
             try
                 activeHandle.UserData(1).selections = {strjoin(ptEditBox.Value, ''), strjoin(faceEditBox.Value, ''), 3};
@@ -1645,6 +1686,121 @@ function nwkViewer()
         end
     end
 
+    function multiSelectCb(~, ~)
+        
+        if ~contains(activeHandle.UserData(1).type, 'graph')
+            return;
+        end
+
+        twoPts4MultiSelect = []; multiSelectFaceIdx = [];
+        dcm_obj = datacursormode(axesFig);
+        if multiSelect.Value
+            set(dcm_obj, 'DisplayStyle', 'datatip', 'Enable', 'on', 'UpdateFcn', @multiSelectPath);
+            set(activeHandle, 'NodeColor', nodeColor, 'EdgeColor', 'black', 'MarkerSize', 2, 'LineWidth', 2, 'NodeLabel', {}, 'EdgeLabel', {});
+        else
+            set(dcm_obj, 'Enable', 'off', 'UpdateFcn', []);
+            set(activeHandle, 'NodeColor', nodeColor, 'MarkerSize', 2, 'LineWidth', 2);
+            set([selectedFaces,groupIdBox], 'String', '');
+            reColorGrps();
+        end
+    end
+
+    function txt = multiSelectPath(~, event)
+
+        ptCoords = event.Position;
+        
+        activeG = rendererTable.graphObj{activeIdx};
+        ptRow = find(activeG.Nodes.X == ptCoords(1) & activeG.Nodes.Y == ptCoords(2) & ...
+                     activeG.Nodes.Z == ptCoords(3));
+        ptIndex = activeG.Nodes.Labels(ptRow);
+        txt = ['Node ', num2str(ptIndex)];
+
+        highlight(activeHandle, ptRow, 'NodeColor', 'red', 'MarkerSize', 8);
+        twoPts4MultiSelect = [twoPts4MultiSelect, ptRow];
+
+          if length(twoPts4MultiSelect) == 2
+
+                origWt = activeG.Edges.Weight;
+                [sn, tn] = findedge(activeG);
+                dx = activeG.Nodes.X(sn) - activeG.Nodes.X(tn);
+                dy = activeG.Nodes.Y(sn) - activeG.Nodes.Y(tn);
+                dz = activeG.Nodes.Z(sn) - activeG.Nodes.Z(tn);
+                faceLen = sqrt(dx.^2 + dy.^2 + dz.^2);
+                activeG.Edges.Weight = faceLen;
+        
+                pathPts = shortestpath(activeG, twoPts4MultiSelect(1), twoPts4MultiSelect(2)); 
+                activeG.Edges.Weight = origWt;
+
+                if (isempty(pathPts))
+                    highlight(activeHandle, twoPts4MultiSelect, 'NodeColor', nodeColor, 'MarkerSize', 2);
+                    twoPts4MultiSelect = [];
+                    disp('No path between the 2 points');
+                    return;
+                end
+
+                highlight(activeHandle, pathPts, 'NodeColor', 'green', 'EdgeColor', 'green', 'LineWidth', 6);
+        
+                faceIdx = findedge(activeG, pathPts(1:end-1), pathPts(2:end));
+                origFaceIdx = activeG.Edges.Weight(faceIdx);
+                multiSelectFaceIdx = [multiSelectFaceIdx; origFaceIdx];
+                multiSelectFaceIdx = unique(multiSelectFaceIdx);
+
+                set(selectedFaces, 'String', strjoin(string(multiSelectFaceIdx), ','));
+                twoPts4MultiSelect = [];
+          elseif length(twoPts4MultiSelect) > 2
+               highlight(activeHandle, twoPts4MultiSelect, 'NodeColor', nodeColor, 'MarkerSize', 2);
+               twoPts4MultiSelect = [];
+          end
+    end
+
+    function deleteFacesCb(~, ~)
+
+        % Get face indices from the text box
+        inputStr = selectedFaces.String;
+        inputStr = strsplit(inputStr, ','); 
+        faceIndices = str2double(inputStr);
+
+        if (isnan(faceIndices))
+            return;
+        end
+
+        % update activeG
+        GEdges = find(ismember(activeG.Edges.Weight, faceIndices));
+        activeG = rmedge(activeG, activeG.Edges.EndNodes(GEdges, 1), activeG.Edges.EndNodes(GEdges, 2));
+        rendererTable{activeIdx, 5} = {activeG};
+
+        % update active handle of graph plot
+        updateActivePlot();
+        reColorGrps();
+    end
+
+
+    function assignGroupCb(~, ~)
+
+        % Get face indices from the text box
+        inputStr = selectedFaces.String;
+        inputStr = strsplit(inputStr, ','); 
+        faceIndices = str2double(inputStr);
+
+        grpId = str2num(groupIdBox.String);
+        
+        if any(isnan(faceIndices)) || any(isnan(grpId))
+            return;
+        end
+
+        activeNwk.faceMx(faceIndices, 1) = ones(size(faceIndices, 2), 1) * grpId;
+        rendererTable.nwkObj{activeIdx} = activeNwk;
+
+        initGroupBox();
+        reColorGrps();
+
+        set(groupIdBox, 'String', '');
+
+        % % reApplyUIOptions();
+        % reApplyHighlights();
+
+    end
+
     function connectedCompCb(~, ~)
     
         persistent compFig;
@@ -1766,6 +1922,7 @@ function nwkViewer()
  
         checkedGroupIDs = findCheckedGrpIds();
         facesList = find(ismember(activeNwk.faceMx(:, 1), checkedGroupIDs));
+
 
         if size(facesList, 1) == activeNwk.nf
 
@@ -2374,7 +2531,6 @@ function nwkViewer()
         uicontrol(renameFig, 'Style', 'text', 'String', 'New Group ID:', 'Position', [30, 110, 100, 22], 'HorizontalAlignment', 'left');
         newGrpId = uicontrol(renameFig, 'Style', 'edit', 'Position', [135, 110, 150, 22]);
 
-    
         % Apply and Cancel buttons
          uicontrol(renameFig, 'Style', 'pushbutton', 'String', 'Apply', ...
             'Position', [80, 70, 80, 30], 'Callback', @applyRenameCb);
@@ -2470,6 +2626,8 @@ function nwkViewer()
         groupIds(secondInterval) = -2;
         groupIds(thirdInterval) = -3;
         activeNwk.faceMx(:, 1) = groupIds;
+
+        rendererTable.nwkObj{activeIdx} = activeNwk;
     end
 
     function faceProp = extractFaceProp()
@@ -2522,10 +2680,14 @@ function nwkViewer()
             
             if (~isempty(activeHandle))
                 reColorGrps(); % color based on property?
-                set(activeHandle, 'LineWidth', 2, 'MarkerSize', 2); % what if active file is changed?
+                set(activeHandle, 'NodeColor', nodeColor, 'LineWidth', 2, 'MarkerSize', 2); % what if active file is changed?
             end
+
             dcm_obj = datacursormode(axesFig);
             set(dcm_obj, 'Enable', 'off', 'UpdateFcn', []);
+
+            twoPts4MultiSelect = []; multiSelectFaceIdx = []; multiSelect.Value = 0;
+            set([selectedFaces,groupIdBox], 'String', '');            
         end
     end    
  
@@ -2832,5 +2994,35 @@ function nwkViewer()
       end
       updateSelections();
     end
+
+    function updateActivePlot()
+
+        fig.Pointer = 'watch'; axesFig.Pointer = 'watch';
+        type = 'subgraph';
+        if (directionsOn.Value); type = 'disubgraph'; end
+
+        hold(ax, "on");
+        if ~isempty(rendererTable.plotHandle{activeIdx})
+            delete(rendererTable.plotHandle{activeIdx});
+        end
+        
+        if ~isempty(activeG.Nodes)
+            activeHandle = plot(ax, activeG, 'XData', activeG.Nodes.X, 'YData', activeG.Nodes.Y, 'ZData', activeG.Nodes.Z, ...
+                 'NodeColor', nodeColor, 'EdgeColor', 'k', 'NodeLabel', {}, 'MarkerSize', 2, 'LineWidth', 2) ;
+            activeHandle.UserData = struct('type', '', 'selections', {}, 'groups', []);         
+            activeHandle.UserData(1).type = type;
+
+            rendererTable{activeIdx, 4} = {activeHandle};
+            if labelsOn.Value
+                labelsOnCb();
+            end
+        end
+
+        hold(ax, "off");
+        
+        resetOnRedraw();
+        drawnow;
+        fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
+    end    
 
 end
