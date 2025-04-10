@@ -483,14 +483,16 @@ function nwkViewer()
     
              while ~feof(fid)
                 line = fgetl(fid);
+                offsetVec = [0, 0, 0]; transparencyVal = 1; 
                 
                 paths = regexp(line, 'filename=''?([^,''"]+)''?', 'tokens');
                 colors = regexp(line, 'color=([^, ]+)', 'tokens');
                 views = regexp(line, 'view=([^, ]+)', 'tokens');
+                offsets = regexp(line, 'offset=\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)', 'tokens'); % allows spaces and  eg: -92.18 format
                 
                 if isempty(paths)
                     disp('Invalid collection file. Format should be: ');
-                    disp('filename=<absolute-path-to-filename>,color=<color-name>,view=<cylinders/graph>');
+                    disp('filename=<absolute-path-to-filename>,color=<color-name>,view=<cylinders/graph>,offset=(100,0,0),transparency=0.2');
                     return
                 else
                     if isempty(views) || ~ismember(views{1}{1}, validViews)
@@ -499,8 +501,29 @@ function nwkViewer()
                     if isempty(colors)
                         colors{1}{1} = 'black';
                     end
+                    
+                    % Parse offset string to numeric array
+                    offsetVec = [0, 0, 0];
+                    if ~isempty(offsets)
+                        offsetVec = str2double(offsets{1});
+                    end
+
+                    % Parse transparency value and it should be in [0,1]
+                    transparencyVal = 1;
+                    if contains(lower(paths{1}{1}), '.stl')
+                        transparency = regexp(line, 'transparency=([0-1]?\.?\d+)', 'tokens');
+                        if ~isempty(transparency)
+                            val = str2double(transparency{1}{1});
+                            if val >= 0 && val <= 1
+                                transparencyVal = val;
+                            else
+                                disp('Invalid transparency value, so defaulting to 1. Value should be between 0 and 1.');
+                            end
+                        end
+                    end
+
                     colors{1}{1} = validateColor(colors{1}{1});
-                    collData(end+1, :) = {paths{1}{1}, colors{1}{1}, views{1}{1}};
+                    collData(end+1, :) = {paths{1}{1}, colors{1}{1}, views{1}{1}, offsetVec, transparencyVal};
                 end
             end
 
@@ -508,9 +531,8 @@ function nwkViewer()
             
             for i = 1:size(collData, 1)
                 collFilePath = collData{i, 1};
-                loadScene(collFilePath, collData{i, 3}, collData{i, 2});
+                loadScene(collFilePath, collData{i, 3}, collData{i, 2}, collData{i, 4}, collData{i, 5});
                 fprintf("Loaded nwk : %s\n", collFilePath);
-
             end
 
          else
@@ -537,13 +559,17 @@ function nwkViewer()
        
     end
 
-    function loadScene(filePath, view, collColor)
+    function loadScene(filePath, view, collColor, offsetVec, transparency)
         [path, name, ext] = fileparts(filePath);
+
+         if (isempty(offsetVec)); offsetVec = [0, 0, 0]; end
+         if (isempty(transparency)); transparency = 1; end
 
          if strcmp(ext, '.nwkx'); ext = '.fMx'; end
 
          if strcmp(ext, '.fMx')
              activeNwk = nwkHelp.load(fullfile(path, name));
+             activeNwk.ptCoordMx = activeNwk.ptCoordMx + offsetVec; % add offset from coll, or default is [0,0,0]
              activeIdx = size(rendererTable, 1) + 1;
              rendererTable(activeIdx, 1:3) = {filePath, ext, {activeNwk}};
             
@@ -583,14 +609,16 @@ function nwkViewer()
 
              stlNwk = nwkConverter.stl2faceMx3(filePath);
              idx = size(viewTable, 1) + 1;
+             stlNwk.ptCoordMx = stlNwk.ptCoordMx + offsetVec;  % add offset from coll, or default is [0,0,0]
              viewTable(idx, 1:3) = {filePath, ext, {stlNwk}};
-             plotStl(stlNwk);
+             plotStl(stlNwk, transparency);
              expandAxesLimits(ax, stlNwk);
 
          elseif strcmp(ext, '.msh') || strcmp(ext, '.nwk')
 
              mshNwk = nwkConverter.msh2nwk(filePath);
              idx = size(viewTable, 1) + 1;
+             mshNwk.ptCoordMx = mshNwk.ptCoordMx + offsetVec; % add offset from coll, or default is [0,0,0]
              viewTable(idx, 1:3) = {filePath, ext, {mshNwk}};
              plotMsh(mshNwk);
              expandAxesLimits(ax, mshNwk);
@@ -886,11 +914,11 @@ function nwkViewer()
         fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
     end
 
-    function plotStl(stlNwk)
+    function plotStl(stlNwk, transparency)
         
         hold(ax, "on");
         stlHandle = patch(ax, 'Faces', stlNwk.faceMx3(:, 2:4), 'Vertices', stlNwk.ptCoordMx, ...
-            'FaceColor', [0.8 0.8 0.8], 'EdgeColor', [0.75 0.75 0.75]);
+            'FaceColor', [0.8 0.8 0.8], 'EdgeColor', [0.75 0.75 0.75], 'FaceAlpha', transparency);
         hold(ax, "off");
 
         idx = size(viewTable, 1);
