@@ -1,3 +1,6 @@
-filename=/Users/lavanyavaddavalli/Desktop/lppd/data/S58.2022/S58_bb7.fMx,color=red,view=cylinders
-filename=/Users/lavanyavaddavalli/Desktop/lppd/data/S58.2022/S58_bbv.fMx,color=blue,view=cylinders
-filename=/Users/lavanyavaddavalli/Desktop/lppd/data/S58.2022/S58_S30.stl
+filename=/Users/lavanyavaddavalli/Desktop/lppd/data/S58.2022/S58_bb7.fMx,color=red,view=cylinders,offset=(0,0,0)
+filename=/Users/lavanyavaddavalli/Desktop/lppd/data/S58.2022/S58_bbv.fMx,color=blue,view=cylinders,offset=(0,0,0)
+filename=/Users/lavanyavaddavalli/Desktop/lppd/data/S58.2022/S58_S30.stl,offset=(0,0,0)
+filename=/Users/lavanyavaddavalli/Desktop/lppd/data/S58.2022/S58_bb7.fMx,color=red,view=cylinders,offset=(100,0,0)
+filename=/Users/lavanyavaddavalli/Desktop/lppd/data/S58.2022/S58_bbv.fMx,color=blue,view=cylinders,offset=(100,0,0)
+filename=/Users/lavanyavaddavalli/Desktop/lppd/data/S58.2022/S58_S30.stl,offset=(100,0,0)

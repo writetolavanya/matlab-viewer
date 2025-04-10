@@ -463,6 +463,7 @@ function nwkViewer()
                 paths = regexp(line, 'filename=([^, ]+)', 'tokens');
                 colors = regexp(line, 'color=([^, ]+)', 'tokens');
                 views = regexp(line, 'view=([^, ]+)', 'tokens');
+                offsets = regexp(line, 'offset=\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)', 'tokens'); % allows spaces and -92.18 format
                 
                 if isempty(paths)
                     disp('Invalid collection file. Format should be: ');
@@ -475,6 +476,7 @@ function nwkViewer()
                     if isempty(colors)
                         colors{1}{1} = 'black';
                     end
+                    %if isempty()
                     colors{1}{1} = validateColor(colors{1}{1});
                     collData(end+1, :) = {paths{1}{1}, colors{1}{1}, views{1}{1}};
                 end
@@ -515,6 +517,8 @@ function nwkViewer()
 
     function loadScene(filePath, view, collColor)
         [path, name, ext] = fileparts(filePath);
+
+        if strcmp(ext, '.nwkx'); ext = '.fMx'; end
 
          if strcmp(ext, '.fMx')
              activeNwk = nwkHelp.load(fullfile(path, name));
