@@ -537,7 +537,7 @@ function nwkViewer()
 
          else
             
-             loadScene(fullfile(path, file), 'graph');
+             loadScene(fullfile(path, file), 'graph', [0,0,0], 1);
              initGroupBox();
 
          end
@@ -559,17 +559,20 @@ function nwkViewer()
        
     end
 
-    function loadScene(filePath, view, collColor, offsetVec, transparency)
-        [path, name, ext] = fileparts(filePath);
-
-         if (isempty(offsetVec)); offsetVec = [0, 0, 0]; end
-         if (isempty(transparency)); transparency = 1; end
+    function loadScene(filePath, view, offsetVec, transparency, collColor)
+         [path, name, ext] = fileparts(filePath);
 
          if strcmp(ext, '.nwkx'); ext = '.fMx'; end
 
          if strcmp(ext, '.fMx')
              activeNwk = nwkHelp.load(fullfile(path, name));
              activeNwk.ptCoordMx = activeNwk.ptCoordMx + offsetVec; % add offset from coll, or default is [0,0,0]
+
+             lsFile = [fullfile(path, name), '.ls'];
+             if exist(lsFile, 'file') == 2
+                 activeNwk.ls = load(lsFile);
+             end
+
              activeIdx = size(rendererTable, 1) + 1;
              rendererTable(activeIdx, 1:3) = {filePath, ext, {activeNwk}};
             
@@ -597,7 +600,7 @@ function nwkViewer()
 
              expandAxesLimits(ax, activeNwk);
              createPngForIco(filePath);
-             if nargin > 2 && ~isempty(collColor)
+             if nargin > 4 && ~isempty(collColor)
                  initGroupBox(collColor);
              else
                  initGroupBox();
@@ -2203,23 +2206,10 @@ function nwkViewer()
                     indices = 1:(value-1);
                 end
 
-            elseif any(startsWith(condition, {'d', 'l', 'g', 'p1', 'p2', 'ls'}))
+            elseif any(startsWith(condition, {'d', 'l', 'g', 'p1', 'p2'}))
 
                  if strcmp(condition(1), 'd')
                     searchCol = activeNwk.dia;
-
-                 elseif strcmp(condition(1:2), 'ls')
-                     KFfile = 'KF_WM_TV_straight_LCC.faceDistance';
-     
-                     if isfield(activeNwk, 'faceDistance')
-                         searchCol = activeNwk.faceDistance;
-                     elseif ~isfield(activeNwk, 'faceDistance') && exist(KFfile, 'file') == 2
-                         activeNwk.faceDistance = load(KFfile);
-                         searchCol = activeNwk.faceDistance;
-                     else
-                         disp('KF_WM_TV_straight_LCC.faceDistance file not found');
-                        return;
-                     end
 
                  elseif strcmp(condition(1), 'l')
                     if ~isfield(activeNwk, 'faceLen')
@@ -2292,7 +2282,7 @@ function nwkViewer()
                     indices = value:value:activeNwk.np;
                 end
 
-            elseif any(startsWith(condition, {'X', 'Y', 'Z', 'DGi', 'DGo'}))
+            elseif any(startsWith(condition, {'X', 'Y', 'Z', 'DGi', 'DGo', 'ls'}))
 
                 if strcmp(condition(1), 'X')              
                     searchCol = activeNwk.ptCoordMx(:, 1);                
@@ -2300,6 +2290,15 @@ function nwkViewer()
                     searchCol = activeNwk.ptCoordMx(:, 2);
                 elseif strcmp(condition(1), 'Z')
                     searchCol = activeNwk.ptCoordMx(:, 3);
+
+                elseif strcmp(condition(1:2), 'ls')     
+                     if isfield(activeNwk, 'ls')
+                        searchCol = activeNwk.ls;
+                     else
+                        disp('.ls file not found');
+                        return;
+                     end
+
                 elseif strcmp(condition(1:3), 'DGi')
                     if ~isfield(activeNwk, 'inDeg')
                         [activeNwk.inDeg, activeNwk.outDeg] = calculateInOutDegree();
