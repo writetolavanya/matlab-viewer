@@ -243,13 +243,13 @@ function nwkViewer()
         'BackgroundColor', [0.8 0.8 0.8], 'SelectionChangedFcn', @updateFaceProp);
 
    % Table to store all the loaded objects
-   rendererTable = table('Size', [0, 7], ...
-                   'VariableTypes', {'string', 'string', 'cell', 'cell', 'cell', 'cell', 'cell'}, ...
-                   'VariableNames', {'fileName', 'type', 'nwkObj', 'plotHandle', 'graphObj', 'boxHandle', 'grpColors'});
+   rendererTable = table('Size', [0, 9], ...
+                   'VariableTypes', {'string', 'string', 'cell', 'cell', 'cell', 'cell', 'cell', 'cell', 'cell'}, ...
+                   'VariableNames', {'fileName', 'type', 'nwkObj', 'plotHandle', 'graphObj', 'boxHandle', 'grpColors', 'offset', 'title'});
 
-   viewTable = table('Size', [0, 4], ...
-                    'VariableTypes', {'string', 'string', 'cell', 'cell'}, ...
-                    'VariableNames', {'fileName', 'type', 'nwkObj', 'patchObj'});
+   viewTable = table('Size', [0, 6], ...
+                    'VariableTypes', {'string', 'string', 'cell', 'cell', 'cell', 'cell'}, ...
+                    'VariableNames', {'fileName', 'type', 'nwkObj', 'patchObj', 'offset', 'title'});
 
    warning('off', 'all');
 
@@ -483,13 +483,13 @@ function nwkViewer()
     
              while ~feof(fid)
                 line = fgetl(fid);
-                offsetVec = [0, 0, 0]; transparencyVal = 1; 
                 
                 paths = regexp(line, 'filename=''?([^,''"]+)''?', 'tokens');
                 colors = regexp(line, 'color=([^, ]+)', 'tokens');
                 views = regexp(line, 'view=([^, ]+)', 'tokens');
                 offsets = regexp(line, 'offset=\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)', 'tokens'); % allows spaces and  eg: -92.18 format
-                
+                titleMatch = regexp(line, 'title=''([^'']*)''', 'tokens');
+
                 if isempty(paths)
                     disp('Invalid collection file. Format should be: ');
                     disp('filename=<absolute-path-to-filename>,color=<color-name>,view=<cylinders/graph>,offset=(100,0,0),transparency=0.2');
@@ -522,8 +522,15 @@ function nwkViewer()
                         end
                     end
 
+                    if ~isempty(titleMatch)
+                        title = strtrim(titleMatch{1}{1});
+                    else
+                        [~, name, ext] = fileparts(paths{1}{1});
+                        title = [name, ext];
+                    end
+
                     colors{1}{1} = validateColor(colors{1}{1});
-                    collData(end+1, :) = {paths{1}{1}, colors{1}{1}, views{1}{1}, offsetVec, transparencyVal};
+                    collData(end+1, :) = {paths{1}{1}, colors{1}{1}, views{1}{1}, offsetVec, transparencyVal, title};
                 end
             end
 
@@ -531,15 +538,15 @@ function nwkViewer()
             
             for i = 1:size(collData, 1)
                 collFilePath = collData{i, 1};
-                loadScene(collFilePath, collData{i, 3}, collData{i, 2}, collData{i, 4}, collData{i, 5});
+                loadScene(collFilePath, collData{i, 3}, collData{i, 4}, collData{i, 5}, collData{i, 6}, collData{i, 2});
                 fprintf("Loaded nwk : %s\n", collFilePath);
             end
 
-         else
-            
-             loadScene(fullfile(path, file), 'graph', [0,0,0], 1);
-             initGroupBox();
+            addTitles2Plots(); % Add titles - call that function here
 
+         else
+             loadScene(fullfile(path, file), 'graph', [0,0,0], 1, file);
+             initGroupBox();
          end
 
          % Reset point and face highlights' UI options
@@ -559,7 +566,7 @@ function nwkViewer()
        
     end
 
-    function loadScene(filePath, view, offsetVec, transparency, collColor)
+    function loadScene(filePath, view, offsetVec, transparency, title, collColor)
          [path, name, ext] = fileparts(filePath);
 
          if strcmp(ext, '.nwkx'); ext = '.fMx'; end
@@ -575,6 +582,7 @@ function nwkViewer()
 
              activeIdx = size(rendererTable, 1) + 1;
              rendererTable(activeIdx, 1:3) = {filePath, ext, {activeNwk}};
+             rendererTable.offset{activeIdx} = offsetVec; rendererTable.title{activeIdx} = title;
             
              if activeNwk.nf > largeNwk || activeNwk.np > largeNwk
                   grpIds = selectLoadGrps();
@@ -600,7 +608,7 @@ function nwkViewer()
 
              expandAxesLimits(ax, activeNwk);
              createPngForIco(filePath);
-             if nargin > 4 && ~isempty(collColor)
+             if nargin > 5 && ~isempty(collColor)
                  initGroupBox(collColor);
              else
                  initGroupBox();
@@ -614,6 +622,7 @@ function nwkViewer()
              idx = size(viewTable, 1) + 1;
              stlNwk.ptCoordMx = stlNwk.ptCoordMx + offsetVec;  % add offset from coll, or default is [0,0,0]
              viewTable(idx, 1:3) = {filePath, ext, {stlNwk}};
+             viewTable.offset{idx} = offsetVec; viewTable.title{idx} = title;
              plotStl(stlNwk, transparency);
              expandAxesLimits(ax, stlNwk);
 
@@ -623,6 +632,7 @@ function nwkViewer()
              idx = size(viewTable, 1) + 1;
              mshNwk.ptCoordMx = mshNwk.ptCoordMx + offsetVec; % add offset from coll, or default is [0,0,0]
              viewTable(idx, 1:3) = {filePath, ext, {mshNwk}};
+             viewTable.offset{idx} = offsetVec; viewTable.title{idx} = title;
              plotMsh(mshNwk);
              expandAxesLimits(ax, mshNwk);
          end
@@ -839,9 +849,19 @@ function nwkViewer()
             for i = 1:numel(selectedIdx)
                 if ~isempty(viewTable) && selectedIdx(i) > size(rendererTable, 1)
                     idx = selectedIdx(i) - size(rendererTable, 1);
+
+                    ud = viewTable.patchObj{idx}.UserData;
+                    if isstruct(ud) && isfield(ud, 'titleHandle') && isvalid(ud.titleHandle)
+                        delete(ud.titleHandle);
+                    end
                     delete(viewTable.patchObj{idx});
                     viewTable(idx, :) = [];
                 else
+
+                    ud = rendererTable.plotHandle{selectedIdx(i)}.UserData;
+                    if isstruct(ud) && isfield(ud, 'titleHandle') && isvalid(ud.titleHandle)
+                        delete(ud.titleHandle);
+                    end
                     delete(rendererTable.plotHandle{selectedIdx(i)});
                     rendererTable(selectedIdx(i), :) = [];
         
@@ -3050,6 +3070,47 @@ function nwkViewer()
         resetOnRedraw();
         drawnow;
         fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
-    end    
+    end
+
+     function addTitles2Plots()
+    
+        allOffsets = [rendererTable.offset; viewTable.offset];
+        allTitles  = [rendererTable.title;  viewTable.title];
+        allNwks    = [rendererTable.nwkObj; viewTable.nwkObj];
+        allHandles = [rendererTable.plotHandle; viewTable.patchObj];
+
+
+        [~, ~, offsetGroups] = unique(cellfun(@(x) mat2str(x, 6), allOffsets, 'UniformOutput', false));
+    
+        % Loop through each unique offset group
+        for g = 1:max(offsetGroups)
+            rowIdx = find(offsetGroups == g);
+            titles = allTitles(rowIdx);
+            nwkObj = allNwks(rowIdx);
+            pHandle = allHandles(rowIdx);
+    
+            minXYZ = [inf inf inf];
+            for i = 1:length(nwkObj)
+                if ~isempty(nwkObj{i})
+                    coords = nwkObj{i}.ptCoordMx;
+                    minXYZ = min(minXYZ, min(coords, [], 1));
+                end
+            end
+    
+            baseX = minXYZ(1) - (0.2*minXYZ(1)); baseY = minXYZ(2) - (0.2*minXYZ(2)); baseZ = minXYZ(3) - (0.2*minXYZ(3));
+    
+            for i = 1:length(titles)
+                if ischar(titles{i}) || isstring(titles{i})
+                    txtH = text(ax, baseX, baseY - (i-1)*8, baseZ, titles{i}, 'FontSize', 8, 'Color', 'k', 'Interpreter', 'none', 'HorizontalAlignment', 'left');
+
+                    ud = pHandle{i}.UserData;
+                    if ~isstruct(ud), ud = struct(); end
+                    ud.titleHandle = txtH;
+                    pHandle{i}.UserData = ud;
+                end
+            end
+        end
+    end
+
 
 end
