@@ -1164,17 +1164,17 @@ function nwkViewer()
 
         [inlet, outlet] = nwkHelp.findBoundaryNodes(activeNwk);
 
-        if strcmp(activeHandle.UserData(1).type, 'subgraph')
+        if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
             subInlet = find(ismember(activeG.Nodes.Labels, inlet));
             subOutlet = find(ismember(activeG.Nodes.Labels, outlet));
         end
 
         if strcmp(endpointsGrp.SelectedObject.Text, 'None')
 
-            if strcmp(activeHandle.UserData(1).type, 'subgraph')
+            if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
                 highlight(activeHandle, subInlet, 'NodeColor', nodeColor, 'MarkerSize', 2);
                 highlight(activeHandle, subOutlet, 'NodeColor', nodeColor, 'MarkerSize', 2);
-            elseif strcmp(activeHandle.UserData(1).type, 'graph')
+            elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                 highlight(activeHandle, inlet, 'NodeColor', nodeColor, 'MarkerSize', 2);
                 highlight(activeHandle, outlet, 'NodeColor', nodeColor, 'MarkerSize', 2);
             end
@@ -1185,10 +1185,10 @@ function nwkViewer()
 
         elseif strcmp(endpointsGrp.SelectedObject.Text, 'InletPoints')
             
-            if strcmp(activeHandle.UserData(1).type, 'subgraph')
+            if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
                 highlight(activeHandle, subInlet, 'NodeColor', 'red', 'MarkerSize', 8);
                 highlight(activeHandle, subOutlet, 'NodeColor', nodeColor, 'MarkerSize', 2);
-            elseif strcmp(activeHandle.UserData(1).type, 'graph')
+            elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                 highlight(activeHandle, inlet, 'NodeColor', 'red', 'MarkerSize', 8);
                 highlight(activeHandle, outlet, 'NodeColor', nodeColor, 'MarkerSize', 2);
             end
@@ -1198,10 +1198,10 @@ function nwkViewer()
 
         elseif strcmp(endpointsGrp.SelectedObject.Text, 'OutletPoints')
 
-            if strcmp(activeHandle.UserData(1).type, 'subgraph')
+            if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
                 highlight(activeHandle, subOutlet, 'NodeColor', 'blue', 'MarkerSize', 8); 
                 highlight(activeHandle, subInlet, 'NodeColor', nodeColor, 'MarkerSize', 2);
-            elseif strcmp(activeHandle.UserData(1).type, 'graph')
+            elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                 highlight(activeHandle, outlet, 'NodeColor', 'blue', 'MarkerSize', 8); 
                 highlight(activeHandle, inlet, 'NodeColor', nodeColor, 'MarkerSize', 2);
             end
@@ -1211,10 +1211,10 @@ function nwkViewer()
 
         elseif strcmp(endpointsGrp.SelectedObject.Text, 'All EndPoints')
 
-            if strcmp(activeHandle.UserData(1).type, 'subgraph')
+            if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
                 highlight(activeHandle, subInlet, 'NodeColor', 'red', 'MarkerSize', 8);
                 highlight(activeHandle, subOutlet, 'NodeColor', 'blue', 'MarkerSize', 8);
-            elseif strcmp(activeHandle.UserData(1).type, 'graph')
+            elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                 highlight(activeHandle, inlet, 'NodeColor', 'red', 'MarkerSize', 8);
                 highlight(activeHandle, outlet, 'NodeColor', 'blue', 'MarkerSize', 8);
             end
@@ -1241,7 +1241,7 @@ function nwkViewer()
 
         [inlet, outlet] = nwkHelp.findBoundaryFaces(activeNwk);
 
-        if strcmp(activeHandle.UserData(1).type, 'subgraph')
+        if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
             subInlet = find(ismember(activeG.Edges.Weight, inlet));
             subOutlet = find(ismember(activeG.Edges.Weight, outlet));
         end
@@ -1254,10 +1254,10 @@ function nwkViewer()
 
         elseif strcmp(endfacesGrp.SelectedObject.Text, 'InletFaces')
 
-            if strcmp(activeHandle.UserData(1).type, 'subgraph')
+            if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
                 highlight(activeHandle, activeNwk.faceMx(subInlet, 2), ...
                     activeNwk.faceMx(subInlet, 3), 'EdgeColor', 'red', 'LineWidth', 4);
-            elseif strcmp(activeHandle.UserData(1).type, 'graph') 
+            elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                 highlight(activeHandle, activeNwk.faceMx(inlet, 2), ...
                  activeNwk.faceMx(inlet, 3), 'EdgeColor', 'red', 'LineWidth', 4);
             end
@@ -1267,10 +1267,10 @@ function nwkViewer()
        
         elseif strcmp(endfacesGrp.SelectedObject.Text, 'OutletFaces')
 
-            if strcmp(activeHandle.UserData(1).type, 'subgraph')
+            if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
                  highlight(activeHandle, activeNwk.faceMx(subOutlet, 2),...
                     activeNwk.faceMx(subOutlet, 3), 'EdgeColor', 'blue', 'LineWidth', 4);
-            elseif strcmp(activeHandle.UserData(1).type, 'graph')
+            elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                  highlight(activeHandle, activeNwk.faceMx(outlet, 2),...
                     activeNwk.faceMx(outlet, 3), 'EdgeColor', 'blue', 'LineWidth', 4);
             end
@@ -1280,12 +1280,12 @@ function nwkViewer()
         
         elseif strcmp(endfacesGrp.SelectedObject.Text, 'All EndFaces')
            
-            if strcmp(activeHandle.UserData(1).type, 'subgraph')
+            if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
                 highlight(activeHandle, activeNwk.faceMx(subInlet, 2),...
                     activeNwk.faceMx(subInlet, 3), 'EdgeColor', 'red', 'LineWidth', 4);
                 highlight(activeHandle, activeNwk.faceMx(subOutlet, 2),...
                     activeNwk.faceMx(subOutlet, 3), 'EdgeColor', 'blue', 'LineWidth', 4);
-            elseif strcmp(activeHandle.UserData(1).type, 'graph')
+            elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                 highlight(activeHandle, activeNwk.faceMx(inlet, 2),...
                     activeNwk.faceMx(inlet, 3), 'EdgeColor', 'red', 'LineWidth', 4);
                 highlight(activeHandle, activeNwk.faceMx(outlet, 2),...
