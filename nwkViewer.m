@@ -1255,8 +1255,8 @@ function nwkViewer()
         elseif strcmp(endfacesGrp.SelectedObject.Text, 'InletFaces')
 
             if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
-                highlight(activeHandle, activeNwk.faceMx(subInlet, 2), ...
-                    activeNwk.faceMx(subInlet, 3), 'EdgeColor', 'red', 'LineWidth', 4);
+                highlight(activeHandle, activeG.Edges.EndNodes(subInlet, 1), ...
+                    activeG.Edges.EndNodes(subInlet, 2), 'EdgeColor', 'red', 'LineWidth', 4);
             elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                 highlight(activeHandle, activeNwk.faceMx(inlet, 2), ...
                  activeNwk.faceMx(inlet, 3), 'EdgeColor', 'red', 'LineWidth', 4);
@@ -1268,8 +1268,8 @@ function nwkViewer()
         elseif strcmp(endfacesGrp.SelectedObject.Text, 'OutletFaces')
 
             if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
-                 highlight(activeHandle, activeNwk.faceMx(subOutlet, 2),...
-                    activeNwk.faceMx(subOutlet, 3), 'EdgeColor', 'blue', 'LineWidth', 4);
+                 highlight(activeHandle, activeG.Edges.EndNodes(subOutlet, 1),...
+                    activeG.Edges.EndNodes(subOutlet, 2), 'EdgeColor', 'blue', 'LineWidth', 4);
             elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                  highlight(activeHandle, activeNwk.faceMx(outlet, 2),...
                     activeNwk.faceMx(outlet, 3), 'EdgeColor', 'blue', 'LineWidth', 4);
@@ -1281,10 +1281,10 @@ function nwkViewer()
         elseif strcmp(endfacesGrp.SelectedObject.Text, 'All EndFaces')
            
             if strcmp(activeHandle.UserData(1).type, 'subgraph') || strcmp(activeHandle.UserData(1).type, 'disubgraph')
-                highlight(activeHandle, activeNwk.faceMx(subInlet, 2),...
-                    activeNwk.faceMx(subInlet, 3), 'EdgeColor', 'red', 'LineWidth', 4);
-                highlight(activeHandle, activeNwk.faceMx(subOutlet, 2),...
-                    activeNwk.faceMx(subOutlet, 3), 'EdgeColor', 'blue', 'LineWidth', 4);
+                highlight(activeHandle, activeG.Edges.EndNodes(subInlet, 1),...
+                   activeG.Edges.EndNodes(subInlet, 2), 'EdgeColor', 'red', 'LineWidth', 4);
+                highlight(activeHandle, activeG.Edges.EndNodes(subOutlet, 1),...
+                    activeG.Edges.EndNodes(subOutlet, 2), 'EdgeColor', 'blue', 'LineWidth', 4);
             elseif strcmp(activeHandle.UserData(1).type, 'graph') || strcmp(activeHandle.UserData(1).type, 'digraph')
                 highlight(activeHandle, activeNwk.faceMx(inlet, 2),...
                     activeNwk.faceMx(inlet, 3), 'EdgeColor', 'red', 'LineWidth', 4);
