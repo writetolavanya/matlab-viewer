@@ -278,6 +278,12 @@ function nwkViewer()
     selectedFaces = uicontrol(pathTab, 'Style', 'edit', 'Max', 2, 'String', '', ...
         'Position', [20, 200, 270, 255], 'HorizontalAlignment', 'left');
 
+    recordBtn = uicheckbox(viewTab, 'Text', 'Record Operations', 'FontSize', 9, 'Position', [180, 5, 120, 20]);
+
+    % Creates/overwrites the viewerReport.txt file for every new session.
+    fidReport = fopen('viewerReport.txt', 'w');  % write mode (overwrite or create)
+    fclose(fidReport); 
+
    %%%%%%%%%%%%%%%%%%%%%%%% Annotation %%%%%%%%%%%%%%%%%%%%%%%%
 
    % Add annotation with author and supervisor
@@ -285,6 +291,7 @@ function nwkViewer()
         {'Authored by Lavanya Vaddavalli', 'Directed by Andreas Linninger'}, ...
         'FontSize', 8, 'FontAngle', 'italic', 'Color', [0.3 0.3 0.3], ...
         'EdgeColor', 'none', 'HorizontalAlignment', 'right');
+   
 
 %%%%%%%%%%%%%%%%%%%%%%%% UI Callback functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -941,7 +948,7 @@ function nwkViewer()
         
         hold(ax, "on");
         stlHandle = patch(ax, 'Faces', stlNwk.faceMx3(:, 2:4), 'Vertices', stlNwk.ptCoordMx, ...
-            'FaceColor', [0.8 0.8 0.8], 'EdgeColor', [0.75 0.75 0.75], 'FaceAlpha', transparency);
+            'FaceColor', [0.8 0.8 0.8], 'EdgeColor', [0.75 0.75 0.75], 'EdgeAlpha', transparency, 'FaceAlpha', transparency);
         hold(ax, "off");
 
         idx = size(viewTable, 1);
@@ -1194,7 +1201,7 @@ function nwkViewer()
             end
 
             selectionLabels(inlet, []);
-            writeToReport('Selected inlet points: ', inlet, []);
+            if recordBtn.Value; writeToReport('Selected inlet points: ', inlet, []); end
 
         elseif strcmp(endpointsGrp.SelectedObject.Text, 'OutletPoints')
 
@@ -1207,7 +1214,7 @@ function nwkViewer()
             end
 
             selectionLabels(outlet, []);
-            writeToReport('Selected outlet points: ', outlet, []);
+            if recordBtn.Value; writeToReport('Selected outlet points: ', outlet, []); end
 
         elseif strcmp(endpointsGrp.SelectedObject.Text, 'All EndPoints')
 
@@ -1220,7 +1227,7 @@ function nwkViewer()
             end
 
             selectionLabels([inlet, outlet], []);
-            writeToReport('Selected inlet and outlet points: ', [inlet, outlet], []);
+            if recordBtn.Value; writeToReport('Selected inlet and outlet points: ', [inlet, outlet], []); end
 
         end
 
@@ -1263,7 +1270,7 @@ function nwkViewer()
             end
 
             selectionLabels([], inlet);
-            writeToReport('Selected inlet faces: ', [], inlet);
+            if recordBtn.Value; writeToReport('Selected inlet faces: ', [], inlet); end
        
         elseif strcmp(endfacesGrp.SelectedObject.Text, 'OutletFaces')
 
@@ -1276,7 +1283,7 @@ function nwkViewer()
             end
 
             selectionLabels([], outlet);
-            writeToReport('Selected outlet faces: ', [], outlet);
+            if recordBtn.Value; writeToReport('Selected outlet faces: ', [], outlet); end
         
         elseif strcmp(endfacesGrp.SelectedObject.Text, 'All EndFaces')
            
@@ -1293,7 +1300,7 @@ function nwkViewer()
             end
 
             selectionLabels([], [inlet, outlet]);
-            writeToReport('Selected end faces: ', [], [inlet, outlet]);
+            if recordBtn.Value; writeToReport('Selected end faces: ', [], [inlet, outlet]); end
         end
 
     end
@@ -1436,7 +1443,7 @@ function nwkViewer()
          highlight(activeHandle, activeG.Edges.EndNodes(faceRows, 1), activeG.Edges.EndNodes(faceRows, 2), ...
              'EdgeColor', 'red', 'LineWidth', 4);
 
-         writeToReport('Selected faces: ', [], faceIdx);
+         if recordBtn.Value; writeToReport('Selected faces: ', [], faceIdx); end
   
          txt=['p' num2str(ptIdx)];
 
@@ -1503,7 +1510,7 @@ function nwkViewer()
          set(activeHandle, 'NodeColor', nodeColor, 'MarkerSize', 2);
          highlight(activeHandle, ptRow, 'NodeColor', 'red', 'MarkerSize', 8);
          
-         writeToReport('Selected points: ', ptIndex, []);
+         if recordBtn.Value; writeToReport('Selected points: ', ptIndex, []); end
 
          txt = ['Node ', num2str(ptIndex)];
     end
@@ -1566,9 +1573,9 @@ function nwkViewer()
 
         end
 
-        %if ~isempty(ptSelections) || ~isempty(faceSelections)
-        %    writeToReport('Selected points and faces: ', ptSelections, faceSelections);
-        %end
+        if recordBtn.Value && (~isempty(ptSelections) || ~isempty(faceSelections))
+            writeToReport('Selected points and faces: ', ptSelections, faceSelections);
+        end
 
         fig.Pointer = 'arrow'; axesFig.Pointer = 'arrow';
 
@@ -1730,7 +1737,7 @@ function nwkViewer()
             pathPts = shortestpath(activeG, twoPts4Paths(1), twoPts4Paths(2)); 
             highlight(activeHandle, pathPts, 'NodeColor', 'green', 'EdgeColor', 'green', 'LineWidth', 6);
             activeG.Edges.Weight = origWt;
-            writeToReport('Points on the shortest path: ', pathPts, []);
+            if recordBtn.Value;  writeToReport('Points on the shortest path: ', pathPts, []); end
             %selectionLabels(pathPts, []);
 
             twoPts4Paths = [];
@@ -1875,7 +1882,7 @@ function nwkViewer()
                 
                 hd = sprintf('Points and Faces in Connected component %d : ', i);
                 pId = find(compNodeIdx == i); pIdLabels = activeG.Nodes.Labels(pId); fId = activeG.Edges.Weight(facesComp);
-                writeToReport(hd, pIdLabels, fId);
+                if recordBtn.Value;  writeToReport(hd, pIdLabels, fId); end
     
                 numPtsPerComp(i) = length(pId);
                 numFacesPerComp(i) = length(facesComp);
