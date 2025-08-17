@@ -468,7 +468,7 @@ function nwkViewer()
 
     function loadButtonCb(~, ~)
 
-         [file, path] = uigetfile('*.fMx;*.coll;*.stl;*.msh;*.nwk;*.nwkx', 'Select a file to load');
+         [file, path] = uigetfile('*.fMx;*.coll;*.stl;*.msh;*.nwk;*.nwkx;*.pMx', 'Select a file to load');
          if isequal(file, 0) || isequal(path, 0)
               disp('File selection canceled');
               return
