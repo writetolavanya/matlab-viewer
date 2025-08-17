@@ -479,76 +479,25 @@ function nwkViewer()
          tic;
         
          if strcmp(ext, '.coll')
-            fid = fopen(fullfile(path, file), 'r');
-            if fid == -1
-                disp('Unable to open the collection file.');
-                return
+
+            [collData, errMsg] = toolHelper.parseCollectionFile(fullfile(path, file));
+            if errMsg ~= ""
+                fprintf("%s\n", errMsg);
+                fig.Pointer = 'arrow';  axesFig.Pointer = 'arrow';
+                return;
             end
-
-            validViews = {'cylinders', 'graph'};
-            collData = {};
-    
-             while ~feof(fid)
-                line = fgetl(fid);
-                
-                paths = regexp(line, 'filename=''?([^,''"]+)''?', 'tokens');
-                colors = regexp(line, 'color=([^, ]+)', 'tokens');
-                views = regexp(line, 'view=([^, ]+)', 'tokens');
-                offsets = regexp(line, 'offset=\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)', 'tokens'); % allows spaces and  eg: -92.18 format
-                titleMatch = regexp(line, 'title=''([^'']*)''', 'tokens');
-
-                if isempty(paths)
-                    disp('Invalid collection file. Format should be: ');
-                    disp('filename=<absolute-path-to-filename>,color=<color-name>,view=<cylinders/graph>,offset=(100,0,0),transparency=0.2');
-                    return
-                else
-                    if isempty(views) || ~ismember(views{1}{1}, validViews)
-                       views{1}{1} = 'graph';
-                    end
-                    if isempty(colors)
-                        colors{1}{1} = 'black';
-                    end
-                    
-                    % Parse offset string to numeric array
-                    offsetVec = [0, 0, 0];
-                    if ~isempty(offsets)
-                        offsetVec = str2double(offsets{1});
-                    end
-
-                    % Parse transparency value and it should be in [0,1]
-                    transparencyVal = 1;
-                    if contains(lower(paths{1}{1}), '.stl')
-                        transparency = regexp(line, 'transparency=([0-1]?\.?\d+)', 'tokens');
-                        if ~isempty(transparency)
-                            val = str2double(transparency{1}{1});
-                            if val >= 0 && val <= 1
-                                transparencyVal = val;
-                            else
-                                disp('Invalid transparency value, so defaulting to 1. Value should be between 0 and 1.');
-                            end
-                        end
-                    end
-
-                    if ~isempty(titleMatch)
-                        title = strtrim(titleMatch{1}{1});
-                    else
-                        [~, name, ext] = fileparts(paths{1}{1});
-                        title = [name, ext];
-                    end
-
-                    colors{1}{1} = validateColor(colors{1}{1});
-                    collData(end+1, :) = {paths{1}{1}, colors{1}{1}, views{1}{1}, offsetVec, transparencyVal, title};
-                end
-            end
-
-            fclose(fid);
             
             for i = 1:size(collData, 1)
-                collFilePath = collData{i, 1};
-                loadScene(collFilePath, collData{i, 3}, collData{i, 4}, collData{i, 5}, collData{i, 6}, collData{i, 2});
+                collFilePath     = collData{i, 1};
+                colorVal         = collData{i, 2};
+                viewVal          = collData{i, 3};
+                offsetVec        = collData{i, 4};
+                transparencyVal  = collData{i, 5};
+                titleVal         = collData{i, 6};
+
+                loadScene(collFilePath, viewVal, offsetVec, transparencyVal, titleVal, colorVal);
                 fprintf("Loaded nwk : %s\n", collFilePath);
             end
-
             addTitles2Plots(); % Add titles - call that function here
 
          else
@@ -582,7 +531,7 @@ function nwkViewer()
              activeNwk = nwkHelp.load(fullfile(path, name));
              activeNwk.ptCoordMx = activeNwk.ptCoordMx + offsetVec; % add offset from coll, or default is [0,0,0]
 
-             lsFile = [fullfile(path, name), '.ls'];
+             lsFile = fullfile(path, name) + '.ls';
              if exist(lsFile, 'file') == 2
                  activeNwk.ls = load(lsFile);
              end
@@ -614,7 +563,6 @@ function nwkViewer()
              end
 
              expandAxesLimits(ax, activeNwk);
-             createPngForIco(filePath);
              if nargin > 5 && ~isempty(collColor)
                  initGroupBox(collColor);
              else
@@ -2162,8 +2110,9 @@ function nwkViewer()
 
     % Create a small PNG file to be viewed as ico file
     function createPngForIco(filePath)
-        [path, name, ~] = fileparts(filePath);
 
+        filePath = char(filePath);
+        [path, name, ~] = fileparts(filePath);
         pngName = fullfile(path, [name, '.png']);
 
         if ~exist(pngName, 'file')
@@ -2434,17 +2383,6 @@ function nwkViewer()
                 rethrow(ME);
             end
         end
-    end
-
-    function colorRGB = validateColor(colorName)
-        colorName = lower(colorName);
-        validColors = {'red', 'blue', 'green', 'cyan', 'magenta', 'yellow', 'black', 'white'};
-        if ismember(colorName, validColors)
-            color = colorName;
-        else
-            color = 'black';
-        end
-        colorRGB = validatecolor(color);
     end
 
     function [grpIds] = selectLoadGrps()

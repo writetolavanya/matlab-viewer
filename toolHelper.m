@@ -32,7 +32,198 @@ classdef toolHelper
         function [new_nwk] = removeFacesNwk(nwk, faceIndices);
             [new_nwk] = removeFacesNwk(nwk, faceIndices);
         end
+
+        function [collData, errMsg] = parseCollectionFile(collFullPath);
+            [collData, errMsg] = parseCollectionFile(collFullPath);
+        end
+
+        function colorRGB = validateColor(colorName);
+            colorRGB = validateColor(colorName);
+        end
+
+        function [absPath, found] = resolveFilePath(filePath);
+             [absPath, found] = resolveFilePath(filePath);
+        end
     
+    end
+end
+
+% Reads a .coll file and returns parsed rows ready for loadScene.
+function [collData, errMsg] = parseCollectionFile(collFullPath)
+
+    % Fills defaults for color/view/offset/transparency/title
+    % collData is {absPath, color, view, offsetVec(1x3), transparencyVal, title}
+    collData = {}; errMsg   = "";
+
+    if nargin < 1 || ~ischar(collFullPath) && ~isstring(collFullPath)
+        errMsg = "No .coll file path provided.";
+        return;
+    end
+
+    collFullPath = char(collFullPath);
+    if ~exist(collFullPath, 'file')
+        errMsg = "Unable to open the collection file: " + string(collFullPath);
+        return;
+    end
+
+    fid = fopen(collFullPath, 'r');
+    if fid == -1
+        errMsg = "Unable to open the collection file: " + string(collFullPath);
+        return;
+    end
+
+    cleaner = onCleanup(@() fclose(fid));
+    validViews = {'cylinders','graph'};
+
+    lineNo = 0;
+    while ~feof(fid)
+        raw = fgetl(fid);
+        lineNo = lineNo + 1;
+
+        if ~ischar(raw) || all(isspace(raw))
+            continue; % skip empty lines
+        end
+
+        % Extract tokens
+        paths  = regexp(raw, 'filename=''?([^,''"]+)''?', 'tokens');
+        colors = regexp(raw, 'color=([^, ]+)', 'tokens');
+        views  = regexp(raw, 'view=([^, ]+)',  'tokens');
+        offsets = regexp(raw, 'offset=\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)', 'tokens');
+        titleMatch = regexp(raw, 'title=''([^'']*)''', 'tokens');
+
+        if isempty(paths)
+            errMsg = compose("Invalid line %d in %s. Expected:\nfilename=<path>,color=<name>,view=<cylinders/graph>,offset=(x,y,z),transparency=0.2", ...
+                              lineNo, collFullPath);
+            collData = {};
+            return;
+        end
+
+        fileToken = strtrim(paths{1}{1});
+
+        % Defaults
+        viewVal  = 'graph';
+        if ~isempty(views) && any(strcmpi(views{1}{1}, validViews))
+            viewVal = lower(views{1}{1});
+        end
+
+        if isempty(colors)
+            colorVal = 'black';
+        else
+            colorVal = colors{1}{1};
+        end
+        colorVal = validateColor(colorVal);
+
+        offsetVec = [0 0 0];
+        if ~isempty(offsets)
+            nums = str2double(offsets{1});
+            if numel(nums) == 3 && all(isfinite(nums))
+                offsetVec = nums(:).';
+            end
+        end
+
+        % Transparency only applies to STL entries
+        transparencyVal = 1;
+        if contains(lower(fileToken), '.stl')
+            tkn = regexp(raw, 'transparency=([0-1]?\.?\d+)', 'tokens');
+            if ~isempty(tkn)
+                val = str2double(tkn{1}{1});
+                if isfinite(val) && val >= 0 && val <= 1
+                    transparencyVal = val;
+                end
+            end
+        end
+
+        if ~isempty(titleMatch)
+            titleVal = strtrim(titleMatch{1}{1});
+        else
+            [~, nm, ex] = fileparts(fileToken);
+            titleVal = [nm, ex];
+        end
+
+        % Resolve path to absolute
+        [absPath, found] = resolveFilePath(fileToken);
+        if ~found
+            errMsg = compose("File not found (line %d): %s", lineNo, string(fileToken));
+            collData = {};
+            return;
+        end
+
+        collData(end+1, :) = {absPath, colorVal, viewVal, offsetVec, transparencyVal, titleVal};
+    end
+end
+
+function colorRGB = validateColor(colorName)
+    colorName = lower(colorName);
+    validColors = {'red', 'blue', 'green', 'cyan', 'magenta', 'yellow', 'black', 'white'};
+    if ismember(colorName, validColors)
+        color = colorName;
+    else
+        color = 'black';
+    end
+    colorRGB = validatecolor(color);
+end
+
+
+% Resolve absolute/relative file path (upto 5 levels below
+function [absPath, found] = resolveFilePath(inputPath)
+    absPath = ""; found = false;
+
+    if ~(ischar(inputPath) || isstring(inputPath))
+        return;
+    end
+
+    inputPath = char(inputPath);
+    [inDir, inName, inExt] = fileparts(inputPath);
+    target = [inName inExt];
+
+    % 1) Absolute path: verify and return only if it exists
+    if isAbsolutePath(inputPath)
+        if exist(inputPath, 'file') == 2
+            absPath = string(canonicalPath(inputPath));
+            found = true;
+        end
+        return;
+    end
+
+    % 2) Relative with folder component: search within that folder (all depths)
+    if ~isempty(inDir)
+        baseDir = fullfile(pwd, inDir);
+        if isfolder(baseDir) && ~isempty(target)
+            hits = dir(fullfile(baseDir, '**', target));
+            if ~isempty(hits) && ~hits(1).isdir
+                absPath = string(fullfile(hits(1).folder, hits(1).name));
+                found = true;
+            end
+        end
+        return;
+    end
+
+    % 3) Bare filename: search all levels under pwd
+    if ~isempty(target)
+        hits = dir(fullfile(pwd, '**', target));
+        if ~isempty(hits) && ~hits(1).isdir
+            absPath = string(fullfile(hits(1).folder, hits(1).name));
+            found = true;
+        end
+    end
+end
+
+function tf = isAbsolutePath(p)
+% Windows: drive-rooted "C:\..." or UNC "\\server\share\..." --- POSIX: "/"-rooted
+    if ispc
+        tf = ~isempty(regexp(p, '^[A-Za-z]:[\\/]', 'once')) || startsWith(p, '\\');
+    else
+        tf = startsWith(p, filesep);
+    end
+end
+
+function canon = canonicalPath(p)
+% Normalize using dir so we return a canonical absolute path
+    info = dir(p);
+    if ~isempty(info)
+        canon = fullfile(info(1).folder, info(1).name);
+    else
+        canon = p;
     end
 end
 
